@@ -5,14 +5,26 @@
     "version": "1.0.0",
     "scheme": "myExizt",
     "orientation": "portrait",
-    "icon": "./assets/logo.png",
+    "icon": "./assets/images/logo.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/logo.png",
+          "resizeMode": "cover",
+          "backgroundColor": "#041421",
+          "enableFullScreenImage_legacy": true
+        }
+      ],
+      [
+        "expo-font"
+      ]
     ]
   }
 }
