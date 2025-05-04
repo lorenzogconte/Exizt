@@ -1,7 +1,8 @@
-import { View, Text, TextInput, TouchableOpacity, Alert} from 'react-native'
-import { Link, useRouter } from 'expo-router'
-import React, { useState } from 'react'
+import { View, Text, TextInput, TouchableOpacity, Alert} from 'react-native';
+import { Link, useRouter } from 'expo-router';
+import React, { useState } from 'react';
 import axios from 'axios';
+import colors from '../../../assets/colors.js';
 
 const LogIn = () => {
     const router = useRouter();
@@ -40,27 +41,42 @@ const LogIn = () => {
             }
         }
     };
+    
     return (
-        <View className="flex-1 justify-center items-center">
+        <View className="flex-1 justify-center items-center bg-deepblue p-6">
+            <Text className="text-mint text-3xl font-bold mb-10">Log In</Text>
+            
             <TextInput
-                placeholder='Username or Email'
+                placeholder="Username or Email"
+                placeholderTextColor={colors.mint}
                 value={username}
                 onChangeText={setUsername}
+                className="bg-darkteal border border-turquoise w-full rounded-md p-3 mb-5 text-lightgrey"
             />
+            
             <TextInput
                 placeholder="Password"
+                placeholderTextColor={colors.mint}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
+                className="bg-darkteal border border-turquoise w-full rounded-md p-3 mb-8 text-lightgrey"
             />
-            <TouchableOpacity onPress={handleLogIn} className="bg-blue-500 px-4 py-2 rounded-md">
-                <Text className="text-white font-bold">Log In</Text>
+            
+            <TouchableOpacity 
+                onPress={handleLogIn} 
+                className="bg-turquoise w-full py-3 rounded-md mb-6">
+                <Text className="text-deepblue font-bold text-center text-lg">Log In</Text>
             </TouchableOpacity>
-            <Link href={'/signup'} asChild>
-                <TouchableOpacity className="bg-blue-500 px-4 py-2 rounded-md">
-                    <Text className="text-white font-bold">SignUp</Text>
-                </TouchableOpacity>
-            </Link>
+            
+            <View className="flex-row items-center mt-4">
+                <Text className="text-lightgrey mr-2">Don't have an account?</Text>
+                <Link href="/signup" asChild>
+                    <TouchableOpacity>
+                        <Text className="text-mint font-bold">Sign Up</Text>
+                    </TouchableOpacity>
+                </Link>
+            </View>
         </View>
     );
 };

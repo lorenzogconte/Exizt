@@ -16,7 +16,6 @@ export default function ProfileScreen() {
     useEffect(() => {
         const fetchUserData = async () => {
             try {
-                // Changed from https to http (you might need SSL configured for https)
                 const response = await axios.get('http://10.0.2.2:8000/profile/');
                 setUserData({
                     username: response.data.username || 'Not available',
@@ -95,7 +94,6 @@ export default function ProfileScreen() {
     );
 }
 
-// Complete styles implementation
 const styles = StyleSheet.create({
     container: {
         flex: 1,
