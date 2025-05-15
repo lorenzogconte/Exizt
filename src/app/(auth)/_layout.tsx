@@ -1,14 +1,24 @@
 import { Stack } from 'expo-router'
+import colors from '../../../assets/colors.js';
 
 const AuthLayout = () => {
-    return <Stack>
+    return <Stack screenOptions={{
+      contentStyle: { backgroundColor: colors.verydarkgreen }
+      }} >
         <Stack.Screen
-        name="sign-in"
-        options={{ 
-          title: "Sign In", 
-          headerShown: false 
-        }}
-      />
+          name="login"
+          options={{ 
+            title: "Log In", 
+            headerShown: false 
+          }}
+        />
+        <Stack.Screen
+          name="signup"
+          options={{ 
+            title: "Sign Up", 
+            headerShown: false 
+          }}
+        />
     </Stack>
 }
 
