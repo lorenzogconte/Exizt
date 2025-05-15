@@ -4,6 +4,7 @@ const colors = {
     turquoise: '#4c7273',
     mint: '#86b9b0',
     lightgrey: '#d0d6d6',
+    gray: '#626363',
     verydarkgreen: '#021302',
     quitedarkgreen: '#012202',
     darkgreen: '#034504',

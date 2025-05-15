@@ -11,6 +11,12 @@
     "ios": {
       "supportsTablet": true
     },
+    "android": {
+      "permissions": [
+        "PACKAGE_USAGE_STATS"
+      ],
+      "package": "com.lorenzoconte.Exizt"
+    },
     "plugins": [
       "expo-router",
       [
@@ -24,7 +30,16 @@
       ],
       [
         "expo-font"
-      ]
-    ]
+      ],
+      "./src/plugins/withUsageStats"
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "7c3e75d5-7255-498a-97da-534c3f6301ce"
+      }
+    }
   }
 }

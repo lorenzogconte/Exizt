@@ -8,11 +8,11 @@ export default function RootLayout() {
         }} >
         <Stack.Screen
             name="(tabs)"
-            options={{ headerShown: true }}
+            options={{ headerShown: false }}
         />
         <Stack.Screen
             name="(auth)"
-            options={{ headerShown: true }}
+            options={{ headerShown: false }}
         />
     </Stack>
 }
