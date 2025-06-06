@@ -107,6 +107,7 @@ const _Layout = () => {
                         />
                     ),
                 }}
+                initialParams={{ isCurrentUser: true }}
             />
         </Tabs>
     );

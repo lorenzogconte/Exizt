@@ -58,12 +58,6 @@ export default function Index() {
           <Text className="text-green text-3xl font-bold">Screen Time</Text>
           <Text className="text-white text-lg">Track your digital wellbeing</Text>
         </View>
-        
-        <Link href="/login" asChild>
-          <TouchableOpacity className="bg-gray px-4 py-2 rounded-full">
-            <Text className="text-deepblue font-bold">Login</Text>
-          </TouchableOpacity>
-        </Link>
       </View>
       
       <TimePeriodSelector />

@@ -11,6 +11,8 @@ const colors = {
     green: '#046206',
     lightgreen: '#008501',
     verylightgreen: '#AAFA92',
+    black: '#000000',
+    white: '#FFFFFF',
   };
   
   export default colors;
