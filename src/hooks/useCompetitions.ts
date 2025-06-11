@@ -3,38 +3,12 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 import { API_URL } from '@env';
-
-// Types for our competitions data
-export interface User {
-  id: number;
-  username: string;
-  name: string;
-  avatar?: string;
-}
-
-export interface Competition {
-  id: number;
-  name: string;
-  description: string;
-  start_date: string;
-  end_date: string;
-  participants_count: number;
-  creator: User;
-  is_active: boolean;
-  created_at: string;
-}
-
-export interface CompetitionInvitation {
-  id: number;
-  competition: Competition;
-  sender: User;
-  created_at: string;
-  status: 'pending' | 'accepted' | 'declined';
-}
+import { Competition, Invitation, CompetitionParticipant } from '../models/competitionModel';
+import { UserModel } from '../models/userModel';
 
 export const useCompetitions = () => {
   const [competitions, setCompetitions] = useState<Competition[]>([]);
-  const [invitations, setInvitations] = useState<CompetitionInvitation[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,7 +23,7 @@ export const useCompetitions = () => {
         return;
       }
       
-      const response = await axios.get(`${API_URL}/competitions/`, {
+      const response = await axios.get(`${API_URL}/competitions/active`, {
         headers: {
           'Authorization': `Token ${token}`
         }
@@ -80,25 +54,34 @@ export const useCompetitions = () => {
         }
       });
       
-      setInvitations(response.data.filter((inv: CompetitionInvitation) => inv.status === 'pending'));
+      // Convert the API response dates to string format for consistency
+      const formattedInvitations = response.data.map((inv: any) => ({
+        ...inv,
+        created_at: inv.created_at ? inv.created_at.toString() : new Date().toISOString(),
+        updated_at: inv.updated_at ? inv.updated_at.toString() : undefined
+      }));
+      
+      setInvitations(formattedInvitations.filter((inv: Invitation) => inv.status === 'pending'));
     } catch (err) {
       console.error('Error fetching competition invitations:', err);
     }
   };
 
-  // Accept a competition invitation
-  const acceptInvitation = async (invitationId: number) => {
+  const handleInvitation = async (invitationId: number, action: 'accept' | 'decline') => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       
       if (!token) {
-        Alert.alert('Error', 'You need to be logged in to accept invitations');
+        Alert.alert('Error', `You need to be logged in to ${action} invitations`);
         return false;
       }
       
       const response = await axios.post(
-        `${API_URL}/competitions/invitations/${invitationId}/accept/`, 
-        {},
+        `${API_URL}/competitions/invitations/handle/`, 
+        {
+          invitation_id: invitationId,
+          action: action
+        },
         {
           headers: {
             'Authorization': `Token ${token}`,
@@ -113,13 +96,18 @@ export const useCompetitions = () => {
           prevInvitations.filter(inv => inv.id !== invitationId)
         );
         
-        // Add to competitions list
-        const acceptedInvitation = invitations.find(inv => inv.id === invitationId);
-        if (acceptedInvitation) {
-          setCompetitions(prevCompetitions => [
-            ...prevCompetitions, 
-            acceptedInvitation.competition
-          ]);
+        // If accepting, add to competitions list
+        if (action === 'accept') {
+          const acceptedInvitation = invitations.find(inv => inv.id === invitationId);
+          if (acceptedInvitation) {
+            setCompetitions(prevCompetitions => [
+              ...prevCompetitions, 
+              acceptedInvitation.competition
+            ]);
+          }
+          
+          // Refresh competitions list to get updated data
+          await fetchCompetitions();
         }
         
         return true;
@@ -127,57 +115,19 @@ export const useCompetitions = () => {
       
       return false;
     } catch (err) {
-      console.error('Error accepting invitation:', err);
-      Alert.alert('Error', 'Failed to accept invitation');
-      return false;
-    }
-  };
-
-  // Decline a competition invitation
-  const declineInvitation = async (invitationId: number) => {
-    try {
-      const token = await AsyncStorage.getItem('authToken');
-      
-      if (!token) {
-        Alert.alert('Error', 'You need to be logged in to decline invitations');
-        return false;
-      }
-      
-      const response = await axios.post(
-        `${API_URL}/competitions/invitations/${invitationId}/decline/`, 
-        {},
-        {
-          headers: {
-            'Authorization': `Token ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-      
-      if (response.status === 200) {
-        // Remove from invitations list
-        setInvitations(prevInvitations => 
-          prevInvitations.filter(inv => inv.id !== invitationId)
-        );
-        return true;
-      }
-      
-      return false;
-    } catch (err) {
-      console.error('Error declining invitation:', err);
-      Alert.alert('Error', 'Failed to decline invitation');
+      console.error(`Error ${action}ing invitation:`, err);
+      Alert.alert('Error', `Failed to ${action} invitation`);
       return false;
     }
   };
 
   // Create a new competition
   const createCompetition = async (competitionData: {
-    name: string;
+    title: string;
     description: string;
     start_date: string;
     end_date: string;
-    invited_users?: number[];
-  }) => {
+  }): Promise<Competition | null> => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       
@@ -212,7 +162,7 @@ export const useCompetitions = () => {
   };
 
   // Invite a friend to join a competition
-  const inviteToCompetition = async (competitionId: number, userId: number) => {
+  const inviteToCompetition = async (competitionId: number, username: string) => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       
@@ -222,8 +172,11 @@ export const useCompetitions = () => {
       }
       
       const response = await axios.post(
-        `${API_URL}/competitions/${competitionId}/invite/`, 
-        { user_id: userId },
+        `${API_URL}/competitions/invitations/send/`, 
+        { 
+          competition_id: competitionId,
+          username: username 
+        },
         {
           headers: {
             'Authorization': `Token ${token}`,
@@ -235,34 +188,96 @@ export const useCompetitions = () => {
       return response.status === 201;
     } catch (err) {
       console.error('Error inviting to competition:', err);
-      Alert.alert('Error', 'Failed to send invitation');
+
+      if (axios.isAxiosError(err) && err.response) {
+        const errorMessage = err.response.data.message || 
+                            err.response.data.error || 
+                            'Failed to send invitation';
+        Alert.alert('Error', errorMessage);
+      } else {
+        Alert.alert('Error', 'Failed to send invitation');
+      }
+      
+      return false;
+    }
+  };
+
+  const removeParticipant = async (competitionId: number, participantId: number): Promise<boolean> => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      
+      if (!token) {
+        Alert.alert('Error', 'You need to be logged in to remove participants');
+        return false;
+      }
+      
+      const response = await axios.delete(
+        `${API_URL}/competitions/${competitionId}/participants/${participantId}/`, 
+        {
+          headers: {
+            'Authorization': `Token ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      return response.status === 200;
+    } catch (err) {
+      console.error('Error removing participant:', err);
+      
+      if (axios.isAxiosError(err) && err.response) {
+        const errorMessage = err.response.data.message || 
+                            err.response.data.error || 
+                            'Failed to remove participant';
+        Alert.alert('Error', errorMessage);
+      } else {
+        Alert.alert('Error', 'Failed to remove participant');
+      }
+      
       return false;
     }
   };
 
   // Get competition details
-  const getCompetitionDetails = async (competitionId: number) => {
-    try {
-      const token = await AsyncStorage.getItem('authToken');
-      
-      if (!token) {
-        Alert.alert('Error', 'You need to be logged in to view competition details');
-        return null;
-      }
-      
-      const response = await axios.get(`${API_URL}/competitions/${competitionId}/`, {
-        headers: {
-          'Authorization': `Token ${token}`
-        }
-      });
-      
-      return response.data;
-    } catch (err) {
-      console.error('Error fetching competition details:', err);
-      Alert.alert('Error', 'Failed to fetch competition details');
+ const getCompetitionDetails = async (competitionId: number) => {
+  try {
+    const token = await AsyncStorage.getItem('authToken');
+    if (!token) {
+      Alert.alert('Error', 'You need to be logged in to view competition details');
       return null;
     }
-  };
+    const response = await axios.get(`${API_URL}/competitions/${competitionId}/`, {
+      headers: {
+        'Authorization': `Token ${token}`
+      }
+    });
+
+    const userId = await AsyncStorage.getItem('userId');
+    let isCreator = false;
+    
+    if (userId && response.data.creator && response.data.creator.id) {
+      isCreator = response.data.creator.id.toString() === userId;
+    }
+
+    return {
+      competition: response.data,
+      participants: response.data.participants || [],
+      isCreator: isCreator
+    };
+  } catch (err) {
+    console.error('Error fetching competition details:', err);
+    
+    if (axios.isAxiosError(err) && err.response) {
+      const errorMessage = err.response.data.message || 
+                          err.response.data.error || 
+                          'Failed to fetch competition details';
+      Alert.alert('Error', errorMessage);
+    } else {
+      Alert.alert('Error', 'Failed to fetch competition details');
+    }
+    return null;
+  }
+};
 
   // Leave a competition
   const leaveCompetition = async (competitionId: number) => {
@@ -300,11 +315,62 @@ export const useCompetitions = () => {
     }
   };
 
-  // Initial data load
-  useEffect(() => {
-    fetchCompetitions();
-    fetchInvitations();
-  }, []);
+  // Update an existing competition
+  const updateCompetition = async (
+    competitionId: number, 
+    competitionData: {
+      title: string;
+      description: string;
+      start_date: string;
+      end_date: string;
+    }
+  ): Promise<Competition | null> => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      
+      if (!token) {
+        Alert.alert('Error', 'You need to be logged in to update competitions');
+        return null;
+      }
+      
+      const response = await axios.put(
+        `${API_URL}/competitions/${competitionId}/update/`, 
+        competitionData,
+        {
+          headers: {
+            'Authorization': `Token ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      if (response.status === 200) {
+        // Update the competition in the local state if it exists
+        setCompetitions(prevCompetitions => 
+          prevCompetitions.map(comp => 
+            comp.id === competitionId ? {...comp, ...competitionData} : comp
+          )
+        );
+        
+        return response.data;
+      }
+      
+      return null;
+    } catch (err) {
+      console.error('Error updating competition:', err);
+      
+      if (axios.isAxiosError(err) && err.response) {
+        const errorMessage = err.response.data.message || 
+                            err.response.data.error || 
+                            'Failed to update competition';
+        Alert.alert('Error', errorMessage);
+      } else {
+        Alert.alert('Error', 'Failed to update competition');
+      }
+      
+      return null;
+    }
+  };
 
   return {
     competitions,
@@ -313,11 +379,12 @@ export const useCompetitions = () => {
     error,
     fetchCompetitions,
     fetchInvitations,
-    acceptInvitation,
-    declineInvitation,
+    handleInvitation,
     createCompetition,
     inviteToCompetition,
+    removeParticipant,
     getCompetitionDetails,
-    leaveCompetition
+    leaveCompetition,
+    updateCompetition
   };
 };

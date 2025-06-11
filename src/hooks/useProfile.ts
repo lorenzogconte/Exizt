@@ -50,6 +50,7 @@ export function useProfile() {
         console.log("Using locally stored profile data");
         setUserData(localProfile);
         setLoading(false);
+        return;
       }
       
       // Then try to get a fresh version from the API (regardless of whether local data exists)

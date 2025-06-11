@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Alert } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -12,36 +12,16 @@ export function useAuth() {
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
-  const [dailyScreenTimeGoal, setDailyScreenTimeGoal] = useState(2); // Default: 2 hours
+  const [dailyScreenTimeGoal, setDailyScreenTimeGoal] = useState(2);
   const [isLoading, setIsLoading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   
-  // Add validation errors state
+  // Validation states
   const [errors, setErrors] = useState({
     email: '',
     password: '',
     username: '',
     name: ''
   });
-
-  // Check authentication status on component mount
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
-
-  // Check if the user is authenticated
-  const checkAuthStatus = async () => {
-    try {
-      const token = await AsyncStorage.getItem('authToken');
-      const isAuth = !!token;
-      setIsAuthenticated(isAuth);
-      return isAuth;
-    } catch (error) {
-      console.error('Error checking auth status:', error);
-      setIsAuthenticated(false);
-      return false;
-    }
-  };
 
   // Validation functions
   const validateEmail = () => {
@@ -112,38 +92,42 @@ export function useAuth() {
           'Content-Type': 'application/json',
         }
       });
+      console.log("Login response:", response.data);
 
       const token = response.data.token;
-      const profileData: UserModel = {
-        id: response.data.profile.user.id || 0,
-        username: response.data.profile.user.username || 'Not available',
-        email: response.data.profile.user.email || 'Not available',
-        name: response.data.profile.name || 'None',
-        avatar: response.data.profile.avatar || null,
+      const localProfile: UserModel = {
+        id: response.data.user.user.id || 0,
+        username: response.data.user.user.username || 'Not available',
+        email: response.data.user.user.email || 'Not available',
+        name: response.data.user.name || 'None',
+        avatar: response.data.user.avatar || null,
       };
 
       if (token) {
         await AsyncStorage.setItem('authToken', token);
-        await saveProfile(profileData);
+        await saveProfile(localProfile);
         console.log("Token saved:", token);
-        setIsAuthenticated(true);
         router.replace('/(tabs)/profile');
       } else {
         console.error("No token received in login response");
         Alert.alert('Login Error', 'Authentication failed - no token received');
       }
     } catch (error) {
+      console.error("Login error:", error);
       if (axios.isAxiosError(error)) {
         if (error.response) {
           const errorMessage = error.response.data.message || 'Invalid credentials';
+          console.log("Server error response:", error.response.data);
           Alert.alert('Error', errorMessage);
         } else if (error.request) {
+          console.log("No response received:", error.request);
           Alert.alert('Error', 'No response from server. Check your connection.');
         } else {
+          console.log("Error setting up request:", error.message);
           Alert.alert('Error', 'Failed to make request.');
         }
       } else {
-        console.log('Unexpected error:', error);
+        console.log("Unexpected error:", error);
         Alert.alert('Error', 'An unexpected error occurred.');
       }
     } finally {
@@ -151,9 +135,8 @@ export function useAuth() {
     }
   };
 
-  // Updated signup logic
+  // Signup logic
   const handleSignUp = async () => {
-    // Validate all fields one last time
     const isEmailValid = validateEmail();
     const isPasswordValid = validatePassword();
     const isUsernameValid = validateUsername();
@@ -166,6 +149,7 @@ export function useAuth() {
 
     try {
       setIsLoading(true);
+      console.log("Attempting signup with:", { email, username, name });
       
       const response = await axios.post(`${API_URL}/signup/`, {
         email,
@@ -178,40 +162,42 @@ export function useAuth() {
         }
       });
       
-      // Store user data in AsyncStorage (without the password)
+      console.log("Signup response:", response.data);
+      
       if (response.data && response.data.user_id) {
         const userData: UserModel = {
           id: response.data.user_id,
           username,
           email,
           name,
-          dailyScreenTimeGoal: dailyScreenTimeGoal * 60, // Convert to minutes before saving
+          dailyScreenTimeGoal: dailyScreenTimeGoal * 60,
         };
         
         await saveProfile(userData);
+        console.log("User profile saved after signup");
       }
       
       Alert.alert(
         'Success', 
         'Account created successfully!',
-        [
-          {
-            text: 'Login Now',
-            onPress: () => router.replace('/login')
-          }
-        ]
+        [{ text: 'Login Now', onPress: () => router.replace('/login') }]
       );
     } catch (error) {
+      console.error("Signup error:", error);
       if (axios.isAxiosError(error)) {
         if (error.response) {
           const errorMessage = error.response.data.message || 'Something went wrong.';
+          console.log("Server error response:", error.response.data);
           Alert.alert('Error', errorMessage);
         } else if (error.request) {
+          console.log("No response received:", error.request);
           Alert.alert('Error', 'No response from server. Check your connection.');
         } else {
+          console.log("Error setting up request:", error.message);
           Alert.alert('Error', 'Failed to make request.');
         }
       } else {
+        console.log("Unexpected error:", error);
         Alert.alert('Error', 'An unexpected error occurred.');
       }
     } finally {
@@ -222,21 +208,10 @@ export function useAuth() {
   // Logout function
   const logout = async () => {
     try {
-      // Clear auth token and profile data
-      const keysToRemove = [
-        'authToken',
-        '@localProfile' // From UserModel, which we can see in userModel.ts
-      ];
-      
-      await AsyncStorage.multiRemove(keysToRemove);
-      
-      // Reset authentication state
-      setIsAuthenticated(false);
-      
-      // Reset form fields
+      console.log("Logging out user...");
+      await AsyncStorage.multiRemove(['authToken', '@localProfile']);
+      console.log("Auth data cleared");
       resetForm();
-      
-      // Navigate to login screen
       router.replace('/(auth)/login');
       return true;
     } catch (error) {
@@ -246,6 +221,7 @@ export function useAuth() {
     }
   };
 
+  // Reset form fields
   const resetForm = () => {
     setUsername('');
     setPassword('');
@@ -258,6 +234,7 @@ export function useAuth() {
       username: '',
       name: ''
     });
+    console.log("Form fields reset");
   };
 
   return {
@@ -285,9 +262,6 @@ export function useAuth() {
     handleSignUp,
     resetForm,
     isLoading,
-
-    isAuthenticated,
-    checkAuthStatus,
     logout, 
   };
 }
