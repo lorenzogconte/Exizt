@@ -4,6 +4,8 @@ import axios from 'axios';
 import { UserModel, loadProfile, saveProfile } from '../models/userModel';
 import { API_URL } from '@env';
 import { Alert } from 'react-native';
+import * as FileSystem from 'expo-file-system';
+import { ImagePickerAsset } from 'expo-image-picker';
 
 export function useProfile() {
   const [userData, setUserData] = useState<UserModel>({
@@ -24,6 +26,7 @@ export function useProfile() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [editName, setEditName] = useState('');
   const [editAvatar, setEditAvatar] = useState('');
+  const [imageFile, setImageFile] = useState<ImagePickerAsset | null>(null);
 
   // Load user data on component mount
   useEffect(() => {
@@ -127,7 +130,6 @@ export function useProfile() {
     return true;
   };
 
-  // Function to save profile changes
   const saveProfileChanges = async () => {
     if (!validateForm()) {
       return;
@@ -141,31 +143,41 @@ export function useProfile() {
         Alert.alert('Error', 'Authentication token not found');
         return;
       }
+      const formData = new FormData();
+      formData.append('name', editName);
+      if (imageFile) {
+        const fileExtension = imageFile.uri.split('.').pop();
+        const fileName = `avatar-${Date.now()}.${fileExtension}`;
+        const fileToUpload = {
+          uri: imageFile.uri,
+          name: fileName,
+          type: `image/${fileExtension}`
+        };
+        
+        formData.append('avatar', fileToUpload as any);
+      } else if (editAvatar) {
+        // If it's a URL and not a new file
+        formData.append('avatar_url', editAvatar);
+      }
 
-      // Prepare data for API
-      const updateData = {
-        name: editName,
-        avatar: editAvatar,
-      };
-
-      // Send update to API
+      // Send update to API using FormData
       const response = await axios.put(
         `${API_URL}/profile/update/`,
-        updateData,
+        formData,
         {
           headers: {
             'Authorization': `Token ${token}`,
-            'Content-Type': 'application/json',
+            'Content-Type': 'multipart/form-data',
           }
         }
       );
 
       if (response.status === 200) {
-        // Update local state
+        // Update local state with response data
         const updatedProfile = {
           ...userData,
           name: editName,
-          avatar: editAvatar,
+          avatar: response.data.avatar || editAvatar, // Use the URL returned from server
         };
         
         setUserData(updatedProfile);
@@ -184,6 +196,7 @@ export function useProfile() {
     }
   };
 
+  // Update the return object to include setImageFile
   return {
     userData,
     loading,
@@ -194,8 +207,10 @@ export function useProfile() {
     setEditName,
     editAvatar,
     setEditAvatar,
+    imageFile,
+    setImageFile,
     startEditing,
     cancelEditing,
     saveProfileChanges
   };
-}
+};

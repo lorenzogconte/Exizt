@@ -8,6 +8,8 @@ import colors from '../../../assets/colors.js';
 import { UserModel } from '../../models/userModel';
 import { FriendRequest } from '../../models/requestModel';
 import { useLocalSearchParams } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import { Image as RNImage } from 'react-native';
 
 export default function ProfileScreen() {
     const { 
@@ -20,6 +22,7 @@ export default function ProfileScreen() {
         setEditName,
         editAvatar,
         setEditAvatar,
+        setImageFile,
         startEditing,
         cancelEditing,
         saveProfileChanges
@@ -189,16 +192,54 @@ export default function ProfileScreen() {
                                         />
                                     </View>
                                 
-                                <View>
-                                    <Text className="text-white mb-1">Avatar URL:</Text>
-                                    <TextInput
-                                        value={editAvatar || ''}
-                                        onChangeText={setEditAvatar}
-                                        placeholder="https://example.com/avatar.jpg"
-                                        className="bg-gray-800 text-white px-3 py-2 rounded-md"
-                                        placeholderTextColor="#666"
-                                    />
+                            <View>
+                                <Text className="text-white mb-1">Profile Picture:</Text>
+                                <View className="flex-row items-center">
+                                    <View className="mr-4">
+                                    {editAvatar ? (
+                                        <Image 
+                                        source={{ uri: editAvatar }} 
+                                        className="w-16 h-16 rounded-full" 
+                                        />
+                                    ) : (
+                                        <View className="w-16 h-16 rounded-full bg-purple-700 justify-center items-center">
+                                        <Text className="text-white text-2xl font-bold">
+                                            {username && username.charAt(0).toUpperCase()}
+                                        </Text>
+                                        </View>
+                                    )}
+                                    </View>
+                                    <TouchableOpacity 
+                                    className="bg-gray-700 px-4 py-2 rounded-md"
+                                    onPress={async () => {
+                                        // Request permissions
+                                        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                                        
+                                        if (status !== 'granted') {
+                                        Alert.alert('Permission Required', 'Please allow access to your photo library to select an avatar');
+                                        return;
+                                        }
+                                        
+                                        // Launch image picker
+                                        const result = await ImagePicker.launchImageLibraryAsync({
+                                        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                        allowsEditing: true,
+                                        aspect: [1, 1],
+                                        quality: 0.7,
+                                        });
+                                        
+                                        if (!result.canceled && result.assets && result.assets.length > 0) {
+                                        const selectedImage = result.assets[0];
+                                        setEditAvatar(selectedImage.uri);
+                                        // Add this to your useProfile hook
+                                        setImageFile(selectedImage);
+                                        }
+                                    }}
+                                    >
+                                    <Text className="text-white">Select Image</Text>
+                                    </TouchableOpacity>
                                 </View>
+                            </View>
                                 
                                 {/* Action Buttons */}
                                 <View className="flex-row justify-between mt-2">

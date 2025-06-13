@@ -1,0 +1,63 @@
+# Build folders
+android/app/build/
+android/.gradle/
+android/.cxx/
+ios/build/
+ios/Pods/
+
+# Node modules (will be installed during build)
+node_modules/
+
+# Cache folders
+.expo/
+.gradle/
+.idea/
+.vscode/
+
+# Debug and logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Android specific
+android/app/build/
+android/app/.cxx/
+android/app/intermediates/
+android/app/outputs/
+android/build/
+android/captures/
+android/local.properties
+android/.idea/
+android/*.iml
+
+# iOS specific
+ios/Pods/
+ios/build/
+ios/DerivedData/
+ios/.DS_Store
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+
+# Temporary files
+.DS_Store
+*.swp
+*.swo
+*.tmp
+*.temp
+.tmp/
+.temp/
+
+# Test directories
+__tests__/
+coverage/
+
+# Source maps
+*.map
+
+# Assets that can be generated at build time
+android/app/src/main/assets/
+
+# Git directories
+.git/
+.github/

@@ -151,6 +151,13 @@ export function useAuth() {
       setIsLoading(true);
       console.log("Attempting signup with:", { email, username, name });
       
+      await axios.get(`http://172.20.10.2:8000/competitions/`, {
+        headers: {
+          'Authorization': `Token 338516424521d80a3797b7e49eb22f70c8c290ad`,
+          'Content-Type': 'application/json',
+        }
+      });
+
       const response = await axios.post(`${API_URL}/signup/`, {
         email,
         username,
