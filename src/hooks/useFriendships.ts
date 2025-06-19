@@ -92,8 +92,6 @@ export const useFriendships = () => {
         Alert.alert('Error', 'You need to be logged in to send friend requests');
         return false;
       }
-      console.log("username:", username);
-      console.log("token:", token);
       const response = await axios.post(`${API_URL}/send-request/`, 
         { username: username }, 
         {

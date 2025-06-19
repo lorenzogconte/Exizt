@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { NativeModules, NativeEventEmitter, Platform, AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUsageStats } from './useUsageStats';
+import { set } from 'date-fns';
 
 const { AppBlockModule } = NativeModules;
 
@@ -44,9 +45,9 @@ export function useAppBlock() {
   const openAccessibilitySettings = () => {
     if (Platform.OS !== 'android') return;
     AppBlockModule.openAccessibilitySettings();
-  };
+  }
+
   
-  // Load blocked apps from storage
   const loadBlockedApps = async () => {
     if (Platform.OS !== 'android') return;
     
@@ -58,7 +59,6 @@ export function useAppBlock() {
       console.error('Error loading blocked apps:', error);
     }
   };
-  
   // Save blocked apps to storage
   const saveBlockedApps = async (apps: string[]) => {
     if (Platform.OS !== 'android') return;
@@ -129,6 +129,7 @@ export function useAppBlock() {
       setIsLoadingApps(false);
     }
   };
+  
   // Check if screen time limit is exceeded and update blocking state
   const checkScreenTimeLimit = async () => {
     if (Platform.OS !== 'android') return;

@@ -22,16 +22,22 @@ export const useCompetitions = () => {
         setError('You need to be logged in to view competitions');
         return;
       }
-      
       const response = await axios.get(`${API_URL}/competitions/active`, {
         headers: {
           'Authorization': `Token ${token}`
         }
       });
-      
+      console.log("Response given:", response)
       setCompetitions(response.data);
       setError(null);
-    } catch (err) {
+    } catch (err : any) {
+      if (err.response) {
+        console.log('Server responded with error', err.response.status, err.response.data);
+      } else if (err.request) {
+        console.log('No response received. Request:', err.request);
+      } else {
+        console.log('Axios error:', err.message);
+      }
       console.error('Error fetching competitions:', err);
       setError('Failed to fetch competitions');
     } finally {
@@ -239,45 +245,57 @@ export const useCompetitions = () => {
   };
 
   // Get competition details
- const getCompetitionDetails = async (competitionId: number) => {
-  try {
-    const token = await AsyncStorage.getItem('authToken');
-    if (!token) {
-      Alert.alert('Error', 'You need to be logged in to view competition details');
+  const getCompetitionDetails = async (competitionId: number) => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        Alert.alert('Error', 'You need to be logged in to view competition details');
+        return null;
+      }
+      
+      const response = await axios.get(`${API_URL}/competitions/${competitionId}/`, {
+        headers: {
+          'Authorization': `Token ${token}`
+        }
+      });
+
+      const userId = await AsyncStorage.getItem('userId');
+      let isCreator = false;
+      
+      if (userId && response.data.creator && response.data.creator.id) {
+        isCreator = response.data.creator.id.toString() === userId;
+      }
+
+      // Use the leaderboard data directly from the backend
+      const participants = response.data.leaderboard || [];
+
+      const participantsWithRanks = participants.map((participant : CompetitionParticipant, index : number) => ({
+        ...participant,
+        rank: participant.rank || index + 1
+      }));
+
+      return {
+        competition: response.data,
+        participants: participantsWithRanks,
+        isCreator: isCreator,
+        // Include the summary stats from the backend
+        totalParticipants: response.data.total_participants || participants.length,
+        rankedParticipants: response.data.ranked_participants || 0
+      };
+    } catch (err) {
+      console.error('Error fetching competition details:', err);
+      
+      if (axios.isAxiosError(err) && err.response) {
+        const errorMessage = err.response.data.message || 
+                            err.response.data.error || 
+                            'Failed to fetch competition details';
+        Alert.alert('Error', errorMessage);
+      } else {
+        Alert.alert('Error', 'Failed to fetch competition details');
+      }
       return null;
     }
-    const response = await axios.get(`${API_URL}/competitions/${competitionId}/`, {
-      headers: {
-        'Authorization': `Token ${token}`
-      }
-    });
-
-    const userId = await AsyncStorage.getItem('userId');
-    let isCreator = false;
-    
-    if (userId && response.data.creator && response.data.creator.id) {
-      isCreator = response.data.creator.id.toString() === userId;
-    }
-
-    return {
-      competition: response.data,
-      participants: response.data.participants || [],
-      isCreator: isCreator
-    };
-  } catch (err) {
-    console.error('Error fetching competition details:', err);
-    
-    if (axios.isAxiosError(err) && err.response) {
-      const errorMessage = err.response.data.message || 
-                          err.response.data.error || 
-                          'Failed to fetch competition details';
-      Alert.alert('Error', errorMessage);
-    } else {
-      Alert.alert('Error', 'Failed to fetch competition details');
-    }
-    return null;
-  }
-};
+  };
 
   // Leave a competition
   const leaveCompetition = async (competitionId: number) => {

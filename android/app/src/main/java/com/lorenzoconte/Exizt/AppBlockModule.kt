@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.provider.Settings
 import android.util.Log
+import android.os.Build
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -149,58 +150,62 @@ class AppBlockModule(private val reactContext: ReactApplicationContext)
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val packageManager = reactContext.packageManager
-                val installedPackages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
-                
                 val result = WritableNativeArray()
-                
-                Log.d("AppBlockModule", "Found ${installedPackages.size} installed applications")
-                var filtered = 0
-                for (appInfo in installedPackages) {
-                    val packageName = appInfo.packageName
-                    val isSystemApp = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-                    
-                    // Get the app name first to check if it should be filtered
-                    val appName = try {
-                        packageManager.getApplicationLabel(appInfo).toString()
-                    } catch (e: Exception) {
-                        packageName
-                    }
+                val mainIntent = Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_LAUNCHER)
+                }
+                // Use appropriate flag depending on Android version
+                val launchableApps = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    packageManager.queryIntentActivities(mainIntent, PackageManager.ResolveInfoFlags.of(0L))
+                } else {
+                    @Suppress("DEPRECATION")
+                    packageManager.queryIntentActivities(mainIntent, 0)
+                }
 
-                    if (appName == packageName ||
-                        packageName == reactContext.packageName ||
-                        (packageName.startsWith("com.android.") && 
-                        !packageName.equals("com.android.providers.settings") && 
-                        !packageName.equals("com.android.phone") &&
-                        !packageName.equals("com.android.chrome") &&
-                        !packageName.equals("com.android.providers.contacts") && 
-                        !packageName.equals("com.android.providers.settings") && 
-                        !packageName.equals("com.android.providers.calendar")) ||
-                        (packageName.startsWith("com.google.android.") && 
-                        !packageName.startsWith("com.google.android.apps.") && 
-                        !packageName.equals("com.google.android.documentsui"))) {
-                        filtered++
+                val seenPackages = HashSet<String>()
+                val appsToSort = mutableListOf<Map<String, Any>>()
+
+                for (resolveInfo in launchableApps) {
+                    val appInfo = resolveInfo.activityInfo.applicationInfo
+                    val packageName = appInfo.packageName
+
+                    if (packageName == reactContext.packageName) {
                         continue
                     }
-                    // App passed all filters, add it to results
-                    val appMap = WritableNativeMap()
-                    appMap.putString("packageName", packageName)
-                    appMap.putString("appName", appName)
-                    appMap.putBoolean("isSystemApp", isSystemApp)
-                    
+
+                    if (seenPackages.contains(packageName)) {
+                        continue
+                    }
+                    seenPackages.add(packageName)
+
+                    val appName = packageManager.getApplicationLabel(appInfo).toString()
                     // Get the app icon as base64
+                    var iconBase64 = ""
                     try {
-                        val icon = packageManager.getApplicationIcon(packageName)
+                        val icon = packageManager.getApplicationIcon(appInfo)
                         val bitmap = drawableToBitmap(icon)
-                        val iconBase64 = bitmapToBase64(bitmap)
-                        appMap.putString("iconBase64", iconBase64)
+                        iconBase64 = bitmapToBase64(bitmap)
                     } catch (e: Exception) {
                         Log.e("AppBlockModule", "Error getting icon for $packageName: ${e.message}")
                         // No icon provided if there's an error
                     }
-                    
+                    // Add to our temporary list
+                    appsToSort.add(mapOf(
+                        "packageName" to packageName,
+                        "appName" to appName,
+                        "iconBase64" to iconBase64
+                    ))
+                }
+                Log.d("AppBlockModule", "INSTALLED APPLICATIONS: ${result.toString()}")
+                
+                appsToSort.sortBy { (it["appName"] as String).lowercase() }
+                for (app in appsToSort) {
+                    val appMap = WritableNativeMap()
+                    appMap.putString("packageName", app["packageName"] as String)
+                    appMap.putString("appName", app["appName"] as String)
+                    appMap.putString("iconBase64", app["iconBase64"] as String)
                     result.pushMap(appMap)
                 }
-                
                 withContext(Dispatchers.Main) {
                     promise.resolve(result)
                 }
@@ -212,6 +217,11 @@ class AppBlockModule(private val reactContext: ReactApplicationContext)
         }
     }
 
+    private fun isSystemApplication(applicationInfo: ApplicationInfo) :Boolean {
+        if((applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0)
+            return true
+        return false
+    }
     // Helper function to convert Drawable to Bitmap
     private fun drawableToBitmap(drawable: Drawable): Bitmap {
         if (drawable is BitmapDrawable) {

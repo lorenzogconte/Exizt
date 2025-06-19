@@ -28,18 +28,13 @@ class AppBlockAccessibilityService : AccessibilityService() {
                     
                     // Send event to React Native
                     sendBlockedAppEvent(packageName)
-                    
-                    // Go back to home screen
-                    val startMain = Intent(Intent.ACTION_MAIN)
-                    startMain.addCategory(Intent.CATEGORY_HOME)
-                    startMain.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    startActivity(startMain)
-                    
+
                     // Open our block screen
-                    val blockIntent = Intent(this, MainActivity::class.java)
-                    blockIntent.putExtra("blocked_app", packageName)
-                    blockIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    startActivity(blockIntent)
+                    val intent = Intent(Intent.ACTION_VIEW)
+                    intent.data = android.net.Uri.parse("myExizt://blockscreen?packageName=$packageName")
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    intent.addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                    startActivity(intent)
                 }
             }
         }
@@ -47,7 +42,7 @@ class AppBlockAccessibilityService : AccessibilityService() {
 
     private fun shouldBlockApp(packageName: String): Boolean {
         // Don't block our own app
-        if (packageName == packageName) {
+        if (packageName == "com.lorenzoconte.Exizt") {
             return false
         }
         

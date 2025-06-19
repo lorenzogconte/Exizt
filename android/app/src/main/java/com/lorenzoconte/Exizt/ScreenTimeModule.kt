@@ -30,7 +30,6 @@ class ScreenTimeModule(private val reactContext: ReactApplicationContext) : Reac
                 val currentTime = System.currentTimeMillis()
                 val usageStatsManager = reactContext.getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
                 val packageManager = reactContext.packageManager
-
                 // Get launcher apps
                 val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
                 val launcherApps = packageManager.queryIntentActivities(launcherIntent, 0)
@@ -62,7 +61,6 @@ class ScreenTimeModule(private val reactContext: ReactApplicationContext) : Reac
                     }
                     .sumOf { it.totalTimeInForeground }
 
-                // Create detailed app usage data
                 val appUsageMap = WritableNativeMap()
                 stats.filter { !launcherApps.contains(it.packageName) }
                     .forEach { stat ->
@@ -71,12 +69,10 @@ class ScreenTimeModule(private val reactContext: ReactApplicationContext) : Reac
                         appMap.putDouble("lastTimeUsed", stat.lastTimeUsed.toDouble())
                         appUsageMap.putMap(stat.packageName, appMap)
                 }
-
                 // Create result object
                 val result = WritableNativeMap()
                 result.putDouble("totalScreenTimeMs", totalTimeInMillis.toDouble())
                 result.putMap("appUsage", appUsageMap)
-
                 // Resolve on the main thread
                 withContext(Dispatchers.Main) {
                     promise.resolve(result)

@@ -44,6 +44,7 @@ export function useProfile() {
   const fetchUserData = async () => {
     try {
       setLoading(true);
+      console.log("Current API URL:", API_URL);
       
       // First try to get profile from AsyncStorage
       const localProfile = await loadProfile();

@@ -20,7 +20,7 @@ export interface CompetitionParticipant {
   user: UserModel;
   competition: Competition;
   joined_at: string;
-  position?: number;
+  rank?: number;
   average_daily_use?: number;
 }
 

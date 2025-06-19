@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, BackHandler } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import colors from '../../assets/colors.js';
-import { useAppNameUtils } from '../hooks/useAppNameUtils';
+import RNExitApp from 'react-native-exit-app';
 
 // Array of inspiring quotes about digital wellbeing
 const WELLBEING_QUOTES = [
@@ -21,18 +21,17 @@ const WELLBEING_QUOTES = [
 
 export default function AppBlocked() {
   const params = useLocalSearchParams();
-  const { getAppName } = useAppNameUtils();
   const [quote, setQuote] = useState('');
   
   // Get blocked app name from params
   const blockedApp = params.packageName as string;
-  const appName = blockedApp ? getAppName(blockedApp) : 'this app';
 
   useEffect(() => {
     // Select a random quote
     const randomIndex = Math.floor(Math.random() * WELLBEING_QUOTES.length);
     setQuote(WELLBEING_QUOTES[randomIndex]);
   }, []);
+
 
   return (
     <View className="flex-1 bg-black px-4 pt-12 justify-center items-center">
@@ -45,7 +44,7 @@ export default function AppBlocked() {
       </Text>
       
       <Text className="text-white text-xl text-center mb-8">
-        {`You've reached your limit for ${appName}`}
+        {`You've reached your limit for this app`}
       </Text>
       
       <View className="bg-gray-800 rounded-lg p-6 w-full mb-8">
@@ -56,13 +55,17 @@ export default function AppBlocked() {
       
       <TouchableOpacity 
         className="bg-verylightgreen px-6 py-3 rounded-md mb-4"
-        onPress={() => router.back()}
+        onPress={() => {
+          // First navigate away from the deep-linked screen
+          router.replace("/blockscreen");
+          RNExitApp.exitApp();
+        }}
       >
-        <Text className="text-black font-bold">Return Home</Text>
+        <Text className="text-black font-bold">Close App</Text>
       </TouchableOpacity>
       
       <TouchableOpacity 
-        onPress={() => router.push('/app-block-settings')}
+        onPress={() => router.push('(tabs)')}
       >
         <Text className="text-lightgrey">Manage Blocked Apps</Text>
       </TouchableOpacity>

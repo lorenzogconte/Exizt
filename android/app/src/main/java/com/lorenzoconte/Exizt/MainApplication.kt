@@ -48,6 +48,7 @@ class MainApplication : Application(), ReactApplication {
       load()
     }
     ApplicationLifecycleDispatcher.onApplicationCreate(this)
+    ScreenTimeUploadWorker.scheduleDaily(this)
   }
 
   override fun onConfigurationChanged(newConfig: Configuration) {
