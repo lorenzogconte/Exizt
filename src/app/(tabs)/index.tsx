@@ -1,9 +1,12 @@
-// src/app/(tabs)/index.tsx
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
-import { Link } from 'expo-router';
+import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { router } from 'expo-router';
 import React from 'react';
 import { useUsageStats } from '../../hooks/useUsageStats';
 import { useAppNameUtils } from '../../hooks/useAppNameUtils';
+import { useAppBlock } from '../../hooks/useAppBlock';
+import { Ionicons } from '@expo/vector-icons';
+import colors from '../../../assets/colors.js';
+import { Alert } from 'react-native';
 
 export default function Index() {
   const {
@@ -11,13 +14,31 @@ export default function Index() {
     hasPermission,
     isLoading,
     selectedPeriod,
+    setIsLoading,
     setSelectedPeriod,
     calculateTotalScreenTime,
-    openSettings
+    openSettings,
+    fetchScreenTime
   } = useUsageStats();
   
-  const { getAppName, formatUsageTime } = useAppNameUtils();
+  const { formatUsageTime } = useAppNameUtils();
 
+  const {
+    hasPermission: hasBlockPermission,
+    isFocusModeActive,
+    remainingTime,
+    setFocusMode,
+    openAccessibilitySettings
+  } = useAppBlock();
+  
+  // Add these function in your component
+  const navigateToAppBlockSettings = () => {
+    router.push('/appblockselection');
+  };
+  
+  const toggleFocusMode = () => {
+    setFocusMode(!isFocusModeActive);
+  };
   // Time period selector component (kept inline since we're not extracting components)
   const TimePeriodSelector = () => (
     <View className="flex-row justify-center mb-6 bg-black rounded-full p-1">
@@ -50,7 +71,6 @@ export default function Index() {
     </View>
   );
 
-  // The rest of your component remains largely the same, but uses the hook values
   return (
     <View className="flex-1 bg-black px-4 py-6">
       <View className="flex-row justify-between items-center mb-4">
@@ -58,16 +78,82 @@ export default function Index() {
           <Text className="text-green text-3xl font-bold">Screen Time</Text>
           <Text className="text-white text-lg">Track your digital wellbeing</Text>
         </View>
-        
-        <Link href="/login" asChild>
-          <TouchableOpacity className="bg-gray px-4 py-2 rounded-full">
-            <Text className="text-deepblue font-bold">Login</Text>
-          </TouchableOpacity>
-        </Link>
       </View>
-      
+
       <TimePeriodSelector />
       
+      <View className="flex-row justify-between mb-6">
+        <TouchableOpacity
+          className={`flex-1 py-3 px-4 rounded-lg mr-2 ${isFocusModeActive ? 'bg-verylightgreen' : 'bg-gray-700'}`}
+          onPress={toggleFocusMode}
+        >
+          <View className="flex-row items-center justify-center">
+            <Ionicons 
+              name="moon" 
+              size={18} 
+              color={isFocusModeActive ? colors.black : colors.lightgrey} 
+              style={{ marginRight: 8 }}
+            />
+            <Text className={`font-bold ${isFocusModeActive ? 'text-black' : 'text-lightgrey'}`}>
+              Focus Mode
+            </Text>
+          </View>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          className="flex-1 bg-gray-700 py-3 px-4 rounded-lg ml-2"
+          onPress={navigateToAppBlockSettings}
+        >
+          <View className="flex-row items-center justify-center">
+            <Ionicons 
+              name="apps" 
+              size={18} 
+              color={colors.lightgrey} 
+              style={{ marginRight: 8 }}
+            />
+            <Text className="text-lightgrey font-bold">Block Apps</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      <TouchableOpacity 
+        className="bg-gray-700 py-3 px-4 rounded-lg mb-6"
+        onPress={() => {
+          Alert.alert(
+            'Refresh Data',
+            'Choose refresh mode:',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { 
+                text: 'Normal Refresh', 
+                onPress: async () => {
+                  setIsLoading(true);
+                  await fetchScreenTime(false);
+                }
+              },
+              { 
+                text: 'Debug Refresh', 
+                onPress: async () => {
+                  setIsLoading(true);
+                  await fetchScreenTime(true);
+                  Alert.alert('Debug Info', 'Check console logs for detailed information');
+                }
+              }
+            ]
+          );
+        }}
+      >
+        <View className="flex-row items-center justify-center">
+          <Ionicons 
+            name="refresh" 
+            size={18} 
+            color={colors.lightgrey} 
+            style={{ marginRight: 8 }}
+          />
+          <Text className="text-lightgrey font-bold">Refresh Usage Data</Text>
+        </View>
+      </TouchableOpacity>
+
       {isLoading ? (
         <View className="flex-1 justify-center items-center">
           <Text className="text-lightgrey text-lg">Loading usage data...</Text>
@@ -107,17 +193,9 @@ export default function Index() {
               <View key={app.packageName} className="bg-gray mb-3 rounded-lg p-4">
                 <View className="flex-row justify-between items-center">
                   <View className="flex-row items-center">
-                    <View className="h-10 w-10 rounded-md bg-lightgrey mr-3 items-center justify-center">
-                      <Text className="text-black font-bold text-lg">
-                        {getAppName(app.packageName).charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
                     <View>
                       <Text className="text-lightgrey font-bold">
-                        {getAppName(app.packageName)}
-                      </Text>
-                      <Text className="text-lightgrey text-xs">
-                        {app.packageName}
+                        {app.appName}
                       </Text>
                     </View>
                   </View>

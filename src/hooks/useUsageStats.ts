@@ -1,28 +1,51 @@
 import { useState, useEffect } from 'react';
-import { Alert, Platform } from 'react-native';
-import { 
-  EventFrequency, 
-  queryUsageStats, 
-  showUsageAccessSettings, 
-  checkForPermission 
-} from '@brighthustle/react-native-usage-stats-manager';
+import { Alert, Platform, NativeModules } from 'react-native';
+import { showUsageAccessSettings, checkForPermission } from '@brighthustle/react-native-usage-stats-manager';
+const { ScreenTimeStats } = NativeModules;
+
+// ScreenTimeStats interface functions
+export async function getTodaysScreenTime() {
+  if (Platform.OS !== 'android') return { totalScreenTimeMs: 0, appUsage: {} };
+  return await ScreenTimeStats.getTodaysScreenTime();
+}
+
+export async function getWeeklyScreenTime() {
+  if (Platform.OS !== 'android') return { totalScreenTimeMs: 0, appUsage: {} };
+  return await ScreenTimeStats.getWeeklyScreenTime();
+}
+
+export async function getMonthlyScreenTime() {
+  if (Platform.OS !== 'android') return { totalScreenTimeMs: 0, appUsage: {} };
+  return await ScreenTimeStats.getMonthlyScreenTime();
+}
+
+export async function formatTimeSpent(timeInMillis: number) {
+  if (Platform.OS !== 'android') return '0s';
+  return await ScreenTimeStats.formatTimeSpent(timeInMillis);
+}
 
 export interface AppUsageData {
   packageName: string;
   totalTimeInForeground: number;
   lastTimeUsed: number;
   appName?: string;
+  iconBase64?: string;
 }
 
 export type TimePeriod = 'day' | 'week' | 'month';
 
 export function useUsageStats(initialPeriod: TimePeriod = 'day') {
+  // State variables
   const [usageStats, setUsageStats] = useState<AppUsageData[]>([]);
   const [hasPermission, setHasPermission] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>(initialPeriod);
+  const [debugMode, setDebugMode] = useState(false);
+  const [ScreenTime, setScreenTime] = useState<number>(0);
+  const [formattedScreenTime, setFormattedScreenTime] = useState<string>('');
+  const [isRefreshingScreenTime, setIsRefreshingScreenTime] = useState(false);
 
-  // Request permissions for usage stats
+  // Permission handling
   const requestUsageStatsPermission = async () => {
     if (Platform.OS !== 'android') {
       Alert.alert('Not Supported', 'Usage stats are only available on Android devices');
@@ -63,44 +86,90 @@ export function useUsageStats(initialPeriod: TimePeriod = 'day') {
     showUsageAccessSettings('');
   };
 
-  // Fetch usage statistics based on selected time period
-  const fetchUsageStats = async () => {
+  // Main function to fetch screen time for any period
+  const fetchScreenTime = async (forceDebug = false) => {
     try {
       setIsLoading(true);
+      setIsRefreshingScreenTime(true);
       
-      const endTime = Date.now();
-      let startTime: number;
+      const isDebug = debugMode || forceDebug;
       
-      switch (selectedPeriod) {
-        case 'week':
-          startTime = endTime - 7 * 24 * 60 * 60 * 1000; // 7 days ago
-          break;
-        case 'month':
-          startTime = endTime - 30 * 24 * 60 * 60 * 1000; // 30 days ago
-          break;
-        case 'day':
-        default:
-          startTime = endTime - 24 * 60 * 60 * 1000; // 24 hours ago
-          break;
+      // Check permission first
+      const hasPermission = await checkForPermission();
+      if (!hasPermission) {
+        Alert.alert('Permission Required', 'Usage stats permission is needed');
+        return false;
       }
       
-      const statsObject = await queryUsageStats(EventFrequency.INTERVAL_DAILY, startTime, endTime);
+      if (isDebug) {
+        console.log(`Fetching stats for period: ${selectedPeriod}`);
+      }
       
-      const stats = Object.values(statsObject) as Array<AppUsageData>;
-      // Filter out system apps and sort by usage time
-      const filteredStats = stats.filter((app) => 
-          app.totalTimeInForeground > 0 && 
-          !app.packageName.startsWith('com.android.systemui') &&
-          !app.packageName.startsWith('com.google.android.apps.nexuslauncher')
-        )
+      let statsResult;
+      switch (selectedPeriod) {
+        case 'day':
+          statsResult = await getTodaysScreenTime();
+          break;
+        case 'week':
+          statsResult = await getWeeklyScreenTime();
+          break;
+        case 'month':
+          statsResult = await getMonthlyScreenTime();
+          break;
+        default:
+          statsResult = await getTodaysScreenTime();
+      }
+      
+      const { totalScreenTimeMs, appUsage } = statsResult;
+      
+      // Update state with screen time data
+      setScreenTime(totalScreenTimeMs);
+      
+      // Format the time
+      const formatted = await formatTimeSpent(totalScreenTimeMs);
+      setFormattedScreenTime(formatted);
+      
+      console.log(`============== ${selectedPeriod.toUpperCase()} SCREEN TIME =============`);
+      console.log(`Total screen time: ${totalScreenTimeMs}ms (${Math.round(totalScreenTimeMs/1000/60)} minutes)`);
+      console.log(`Formatted time: ${formatted}`);
+      
+      // Convert the appUsage to our AppUsageData format
+      const stats = Object.keys(appUsage).map(packageName => {
+        const app = appUsage[packageName];
+        return {
+          packageName,
+          totalTimeInForeground: app.totalTimeInForeground,
+          lastTimeUsed: app.lastTimeUsed,
+          appName: packageName.split('.').pop() || packageName
+        };
+      });
+      
+      // Apply filtering
+      const filteredStats = stats
+        .filter(app => {
+          const shouldInclude = app.totalTimeInForeground > 0 && 
+            !app.packageName.startsWith('com.android.systemui') &&
+            !app.packageName.toLowerCase().includes('launcher');
+          
+          // Always include Exizt app
+          if (app.packageName.includes('exizt') || app.packageName.includes('lorenzoconte')) {
+            return true;
+          }
+          
+          return shouldInclude;
+        })
         .sort((a, b) => b.totalTimeInForeground - a.totalTimeInForeground);
       
       setUsageStats(filteredStats);
+      
+      console.log('===== SCREEN TIME FETCH COMPLETE =====');
+      return true;
     } catch (error) {
-      console.error('Error fetching usage stats:', error);
-      Alert.alert('Error', 'Failed to fetch usage statistics.');
+      console.error('Error fetching screen time:', error);
+      return false;
     } finally {
       setIsLoading(false);
+      setIsRefreshingScreenTime(false);
     }
   };
 
@@ -109,13 +178,13 @@ export function useUsageStats(initialPeriod: TimePeriod = 'day') {
     return usageStats.reduce((total, app) => total + app.totalTimeInForeground, 0);
   };
 
-  // Effect to check permission and fetch data
+  // Initial data loading
   useEffect(() => {
     const checkPermissionAndFetchData = async () => {
       try {
         const granted = await requestUsageStatsPermission();
         if (granted) {
-          await fetchUsageStats();
+          await fetchScreenTime();
         }
       } catch (error) {
         console.error("Error in permission check or data fetch:", error);
@@ -126,13 +195,20 @@ export function useUsageStats(initialPeriod: TimePeriod = 'day') {
     checkPermissionAndFetchData();
   }, [selectedPeriod]);
 
+  // Return hook values
   return {
     usageStats,
     hasPermission,
     isLoading,
     selectedPeriod,
+    setIsLoading,
     setSelectedPeriod,
     calculateTotalScreenTime,
-    openSettings
+    openSettings,
+    setDebugMode,
+    ScreenTime,
+    formattedScreenTime,
+    isRefreshingScreenTime,
+    fetchScreenTime
   };
 }

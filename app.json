@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "scheme": "myExizt",
     "orientation": "portrait",
-    "icon": "./assets/images/logo.png",
+    "icon": "./assets/images/logoapp.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
@@ -22,16 +22,22 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/logo.png",
+          "image": "./assets/images/logoapp.png",
           "resizeMode": "cover",
-          "backgroundColor": "#041421",
+          "backgroundColor": "#000000",
           "enableFullScreenImage_legacy": true
         }
       ],
       [
         "expo-font"
       ],
-      "./src/plugins/withUsageStats"
+      "./src/plugins/withUsageStats",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you share them with your friends."
+        }
+      ]
     ],
     "extra": {
       "router": {

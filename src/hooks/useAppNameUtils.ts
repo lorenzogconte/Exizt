@@ -1,33 +1,36 @@
 export function useAppNameUtils() {
-  const getAppName = (packageName: string) => {
-    const appNameMap: Record<string, string> = {
-      'com.android.chrome': 'Chrome',
-      'com.whatsapp': 'WhatsApp',
-      'com.instagram.android': 'Instagram',
-      'com.facebook.katana': 'Facebook',
-      'com.google.android.youtube': 'YouTube',
-      'com.twitter.android': 'Twitter',
-      'com.spotify.music': 'Spotify',
-      'com.netflix.mediaclient': 'Netflix',
-    };
+  
+  const formatUsageTime = (timeInMillis: number): string => {
+    if (timeInMillis < 1000) {
+      return '< 1s'; // Less than a second
+    }
     
-    return appNameMap[packageName] || packageName.split('.').pop() || packageName;
-  };
-
-  // Format time in milliseconds to readable format
-  const formatUsageTime = (timeInMs: number) => {
-    const hours = Math.floor(timeInMs / (1000 * 60 * 60));
-    const minutes = Math.floor((timeInMs % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor(timeInMillis / 1000);
     
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    } else {
+    if (seconds < 60) {
+      // If less than a minute, show seconds
+      return `${seconds}s`;
+    }
+    
+    const minutes = Math.floor(seconds / 60);
+    
+    if (minutes < 60) {
+      // If less than an hour, show minutes
       return `${minutes}m`;
     }
+    
+    // For an hour or more, show hours and minutes
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    
+    if (remainingMinutes === 0) {
+      return `${hours}h`;
+    }
+    
+    return `${hours}h ${remainingMinutes}m`;
   };
 
   return {
-    getAppName,
     formatUsageTime
   };
 }

@@ -2,4 +2,5 @@
   <string name="app_name">Exizt</string>
   <string name="expo_splash_screen_resize_mode" translatable="false">cover</string>
   <string name="expo_splash_screen_status_bar_translucent" translatable="false">false</string>
+  <string name="accessibility_service_description">Exizt uses this service to help you maintain digital wellbeing by blocking apps when you exceed your screen time goal.</string>
 </resources>
