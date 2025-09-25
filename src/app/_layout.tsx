@@ -49,14 +49,6 @@ export default function RootLayout() {
                     presentation: "modal"
                 }}
             />
-                <Stack.Screen
-                name="blockscreen"
-                options={{
-                    title: "App Blocked",
-                    headerShown: false,
-                    presentation: "fullScreenModal"
-                }}
-            />
         </Stack>
     );
 }
