@@ -35,6 +35,8 @@ import android.widget.Toast
 object AppBlocker {
     var blockedAppsList = hashSetOf("")
 
+    const val TAG = "AppBlocker"
+
     data class FocusModeData(
         var isTurnedOn: Boolean = false,
         val endTime: Long = -1,
@@ -49,18 +51,31 @@ object AppBlocker {
     )
 
     fun doesAppNeedToBeBlocked(packageName: String): AppBlockerResult {
-        Log.d("AppBlockModule", "blockedAppsList: $blockedAppsList")
+        Log.d(TAG, "blockedAppsList: $blockedAppsList")
         return AppBlockerResult(isBlocked = blockedAppsList.contains(packageName))
     }
 
     fun isAppInFocus(packageName: String): AppBlockerResult {
-        Log.d("AppBlockModule", "focusSelectedApps: ${focusModeData.selectedApps}")
+        Log.d(TAG, "focusSelectedApps: ${focusModeData.selectedApps}")
         return AppBlockerResult(isBlocked = focusModeData.selectedApps.contains(packageName))
     }
 
     fun checkAccessibilityPermission(reactContext: ReactApplicationContext, mode: String, promise: Promise) {
         try {
-            val enabled = isAccessibilityServiceEnabled(reactContext)
+            if (mode != "normal" || mode != "blocking" || mode != "battery") {
+                promise.reject("ERROR", "Invalid mode: $mode")
+                return
+            }
+            if (mode == "normal") {
+                val enabled = isAccessibilityServiceEnabled(reactContext)
+            if (mode == "blocking") {
+                val enabled = Settings.canDrawOverlays(reactContext)
+            }
+            if (mode == "battery") {
+                val packageName = reactContext.packageName
+                val powerManager = this.getSystemService(Context.POWER_SERVICE) as PowerManager
+                val enable = powerManager.isIgnoringBatteryOptimizations(packageName)
+                Log.d(TAG, "Battery optimization disabled: $enabled")
             promise.resolve(enabled)
         } catch (e: Exception) {
             promise.reject("ERROR", e.message)
@@ -68,7 +83,7 @@ object AppBlocker {
     }
 
     fun openAccessibilitySettings(reactContext: ReactApplicationContext, mode: String) {
-        if (mode != "normal" && mode != "blocking") return
+        if (mode != "normal" || mode != "blocking" || mode != "battery") return
         if (mode == "normal") {
             Toast.makeText(reactContext, "Grant accessibility settings to enable the app to work.", Toast.LENGTH_SHORT).show()
             val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
@@ -93,7 +108,7 @@ object AppBlocker {
 
     fun setBlockedApps(reactContext: ReactApplicationContext, apps: ReadableArray, promise: Promise) {
         try {
-            Log.d("AppBlockModule", "setBlockedApps called with apps: $apps")
+            Log.d(TAG, "setBlockedApps called with apps: $apps")
             val appsString = StringBuilder()
             for (i in 0 until apps.size()) {
                 appsString.append(apps.getString(i))
@@ -148,7 +163,7 @@ object AppBlocker {
             val prefs = reactContext.getSharedPreferences("AppBlockPrefs", Context.MODE_PRIVATE)
             val editor = prefs.edit()
             editor.putBoolean("focusModeActive", active)
-            android.util.Log.d("AppBlockModule", "setFocusMode called with active = $active")
+            android.util.Log.d(TAG, "setFocusMode called with active = $active")
             editor.apply()
             promise.resolve(true)
         } catch (e: Exception) {
@@ -197,7 +212,7 @@ object AppBlocker {
                         val bitmap = drawableToBitmap(icon)
                         iconBase64 = bitmapToBase64(bitmap)
                     } catch (e: Exception) {
-                        Log.e("AppBlockModule", "Error getting icon for $packageName: ${e.message}")
+                        Log.e(TAG, "Error getting icon for $packageName: ${e.message}")
                     }
                     appsToSort.add(mapOf(
                         "packageName" to packageName,

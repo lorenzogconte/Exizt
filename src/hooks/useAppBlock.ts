@@ -32,7 +32,7 @@ export function useAppBlock() {
   const { calculateTotalScreenTime } = useUsageStats();
   
   // Check if we have accessibility permission
-  const checkPermission = async (mode: 'normal' | 'blocking') => {
+  const checkPermission = async (mode: 'normal' | 'blocking' | 'battery') => {
     if (Platform.OS !== 'android') return false;
     
     try {
@@ -48,11 +48,11 @@ export function useAppBlock() {
   // Open accessibility settings
   const openAccessibilitySettings = (mode: 'normal' | 'blocking' | 'battery') => {
     if (Platform.OS !== 'android') return;
-    if (mode !== 'normal' && mode !== 'blocking') return;
     if (mode === 'normal' && state.hasNormalPermission) return;
     if (mode === 'blocking' && state.hasBlockPermission) return;
-    if (mode === 'normal')AppBlockModule.openAccessibilitySettings('normal');
-    if (mode === 'blocking')AppBlockModule.openAccessibilitySettings('blocking');
+    if (mode === 'normal') AppBlockModule.openAccessibilitySettings('normal');
+    if (mode === 'blocking') AppBlockModule.openAccessibilitySettings('blocking');
+    if (mode === 'battery') AppBlockModule.openAccessibilitySettings('battery');
   }
 
   
