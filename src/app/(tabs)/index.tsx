@@ -1,6 +1,6 @@
 import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useUsageStats } from '../../hooks/useUsageStats';
 import { useAppNameUtils } from '../../hooks/useAppNameUtils';
 import { useAppBlock } from '../../hooks/useAppBlock';
@@ -24,13 +24,16 @@ export default function Index() {
   const { formatUsageTime } = useAppNameUtils();
 
   const {
-    hasPermission: hasBlockPermission,
     isFocusModeActive,
     remainingTime,
     setFocusMode,
-    openAccessibilitySettings
   } = useAppBlock();
   
+  useEffect(() => {
+    if (!hasPermission) {
+      openSettings();
+    }
+  }, [hasPermission]);
   // Add these function in your component
   const navigateToAppBlockSettings = () => {
     router.push('/appblockselection');
@@ -157,18 +160,6 @@ export default function Index() {
       {isLoading ? (
         <View className="flex-1 justify-center items-center">
           <Text className="text-lightgrey text-lg">Loading usage data...</Text>
-        </View>
-      ) : !hasPermission ? (
-        <View className="flex-1 justify-center items-center">
-          <Text className="text-lightgrey text-lg text-center mb-6">
-            Permission is required to track screen time
-          </Text>
-          <TouchableOpacity 
-            className="bg-lightgreen px-6 py-3 rounded-full"
-            onPress={openSettings}
-          >
-            <Text className="text-lightgrey font-bold">Open Settings</Text>
-          </TouchableOpacity>
         </View>
       ) : usageStats.length === 0 ? (
         <View className="flex-1 justify-center items-center">

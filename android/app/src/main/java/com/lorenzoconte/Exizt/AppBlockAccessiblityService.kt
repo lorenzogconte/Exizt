@@ -8,6 +8,7 @@ import android.util.Log
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.modules.core.DeviceEventManagerModule
+import android.accessibilityservice.AccessibilityServiceInfo
 
 class AppBlockAccessibilityService : AccessibilityService() {
     companion object {
@@ -19,24 +20,31 @@ class AppBlockAccessibilityService : AccessibilityService() {
         }
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            event.packageName?.toString()?.let { packageName ->
-                // Check if this package should be blocked
-                if (shouldBlockApp(packageName)) {
-                    Log.d(TAG, "Blocking app: $packageName")
-                    
-                    // Send event to React Native
-                    sendBlockedAppEvent(packageName)
+    fun pressHome() {
+        performGlobalAction(GLOBAL_ACTION_HOME)
+    }
 
-                    // Open our block screen
-                    val intent = Intent(Intent.ACTION_VIEW)
-                    intent.data = android.net.Uri.parse("myExizt://blockscreen?packageName=$packageName")
-                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                    intent.addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
-                    startActivity(intent)
-                }
-            }
+    fun pressBack() {
+        performGlobalAction(GLOBAL_ACTION_BACK)
+    }
+
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        val eventType = event?.eventType
+        if (eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            return
+        }
+        val packageName = event?.packageName.toString()
+        Log.d(TAG, "Switched to app $packageName")
+        val blocked = shouldBlockApp(packageName)
+        Log.d("blocked", blocked.toString())
+        if (shouldBlockApp(packageName)) {
+            Log.d(TAG, "Blocking app: $packageName")
+            pressHome()
+            Thread.sleep(300)
+            val dialogIntent = Intent(this, WarningActivity::class.java)
+            dialogIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            dialogIntent.putExtra("packageName", packageName)
+            startActivity(dialogIntent)
         }
     }
 
@@ -55,7 +63,7 @@ class AppBlockAccessibilityService : AccessibilityService() {
         val prefs = getSharedPreferences("AppBlockPrefs", Context.MODE_PRIVATE)
         val blockingActive = prefs.getBoolean("blockingActive", false)
         val focusModeActive = prefs.getBoolean("focusModeActive", false)
-        
+        Log.d("focusModeActive", focusModeActive.toString())
         if (!blockingActive && !focusModeActive) {
             return false
         }
@@ -85,5 +93,13 @@ class AppBlockAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         Log.d(TAG, "Accessibility Service connected")
+        super.onServiceConnected()
+        val info = AccessibilityServiceInfo()
+        info.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
+                         AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED or
+                         AccessibilityEvent.TYPE_VIEW_SCROLLED
+        
+        this.setServiceInfo(info)
     }
+
 }

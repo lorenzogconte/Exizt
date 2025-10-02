@@ -146,7 +146,8 @@ export function useAuth() {
       Alert.alert('Error', 'Please correct the errors before submitting');
       return;
     }
-
+    
+    console.log("API URL:", API_URL);
     console.log("Preparing to sign up with:", { email, username, name });
 
     try {
