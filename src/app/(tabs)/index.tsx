@@ -30,6 +30,7 @@ export default function Index() {
   const {
     isFocusModeActive,
     remainingTime,
+    getFocusMode,
     setFocusMode,
   } = useAppBlock();
   
@@ -41,6 +42,10 @@ export default function Index() {
       }
     };
     checkAllPermissions();
+  }, []);
+
+  useEffect(() => {
+    getFocusMode();
   }, []);
   
   const navigateToAppBlockSettings = () => {

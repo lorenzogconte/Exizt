@@ -123,6 +123,7 @@ export function useAppBlock() {
     if (Platform.OS !== 'android') return false;
     try {
       const isFocusModeActive = await AppBlockModule.getFocusMode();
+      setState(prev => ({ ...prev, isFocusModeActive: !!isFocusModeActive })); // <-- Add this line
       return !!isFocusModeActive;
     } catch (error) {
       console.error('Error getting focus mode state:', error);

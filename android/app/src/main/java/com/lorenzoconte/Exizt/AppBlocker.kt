@@ -152,8 +152,10 @@ object AppBlocker {
 
     fun getFocusMode(reactContext: ReactApplicationContext, promise: Promise) {
         try {
+            Log.d(TAG, "getFocusMode called and")
             val prefs = reactContext.getSharedPreferences("AppBlockPrefs", Context.MODE_PRIVATE)
             val focusModeActive = prefs.getBoolean("focusModeActive", false)
+            Log.d(TAG, "getFocusMode called and focusModeActive = $focusModeActive")
             promise.resolve(focusModeActive)
         } catch (e: Exception) {
             promise.reject("ERROR", e.message)
