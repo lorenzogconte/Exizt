@@ -9,24 +9,12 @@ import { useAppNameUtils } from '../hooks/useAppNameUtils';
 
 export default function AppBlockSettings() {
   const { 
-    hasNormalPermission, 
-    hasBlockPermission,
     blockedApps, 
-    toggleBlockedApp, 
-    openAccessibilitySettings,
+    toggleBlockedApp,
     installedApps,
     isLoadingApps,
     fetchInstalledApps
   } = useAppBlock();
-
-  useEffect(() => {
-    if (!hasBlockPermission) {
-      openAccessibilitySettings('blocking');
-    }
-    if (!hasNormalPermission) {
-      openAccessibilitySettings('normal');
-    }
-  }, [hasNormalPermission, hasBlockPermission]);
 
   useEffect(() => {
     // Fetch installed apps when component mounts

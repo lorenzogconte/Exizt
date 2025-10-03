@@ -1,5 +1,5 @@
 import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
-import { router } from 'expo-router';
+import { router, useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
 import { useUsageStats } from '../../hooks/useUsageStats';
 import { useAppNameUtils } from '../../hooks/useAppNameUtils';
@@ -9,6 +9,8 @@ import colors from '../../../assets/colors.js';
 import { Alert } from 'react-native';
 
 export default function Index() {
+  const router = useRouter();
+
   const {
     usageStats,
     hasPermission,
@@ -20,6 +22,8 @@ export default function Index() {
     openSettings,
     fetchScreenTime
   } = useUsageStats();
+
+  const { checkPermission } = useAppBlock();
   
   const { formatUsageTime } = useAppNameUtils();
 
@@ -30,11 +34,15 @@ export default function Index() {
   } = useAppBlock();
   
   useEffect(() => {
-    if (!hasPermission) {
-      openSettings();
-    }
-  }, [hasPermission]);
-  // Add these function in your component
+    const checkAllPermissions = async () => {
+      const hasAllPermissions = await checkPermission('all');
+      if (!hasAllPermissions) {
+        router.replace('/permissions');
+      }
+    };
+    checkAllPermissions();
+  }, []);
+  
   const navigateToAppBlockSettings = () => {
     router.push('/appblockselection');
   };

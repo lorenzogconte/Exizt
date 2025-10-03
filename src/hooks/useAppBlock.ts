@@ -3,6 +3,7 @@ import { NativeModules, NativeEventEmitter, Platform, AppState } from 'react-nat
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUsageStats } from './useUsageStats';
 import { set } from 'date-fns';
+import { showUsageAccessSettings, checkForPermission } from '@brighthustle/react-native-usage-stats-manager';
 
 const { AppBlockModule } = NativeModules;
 
@@ -10,6 +11,7 @@ interface AppBlockState {
   hasNormalPermission: boolean;
   hasBlockPermission: boolean;
   hasBatteryPermission: boolean;
+  hasAllPermission: boolean;
   blockedApps: string[];
   isBlockingActive: boolean;
   isFocusModeActive: boolean;
@@ -32,13 +34,36 @@ export function useAppBlock() {
   const { calculateTotalScreenTime } = useUsageStats();
   
   // Check if we have accessibility permission
-  const checkPermission = async (mode: 'normal' | 'blocking' | 'battery') => {
+  const checkPermission = async (mode: 'normal' | 'blocking' | 'battery' | 'all') => {
     if (Platform.OS !== 'android') return false;
     
     try {
-      const hasPermission = await AppBlockModule.checkAccessibilityPermission(mode);
-      setState(prev => ({ ...prev, hasPermission }));
-      return hasPermission;
+      if (mode === 'all') {
+        const normal = await AppBlockModule.checkAccessibilityPermission('normal');
+        const blocking = await AppBlockModule.checkAccessibilityPermission('blocking');
+        const battery = await AppBlockModule.checkAccessibilityPermission('battery');
+        const time = await checkForPermission();
+        hasAllPermission = normal && blocking && battery && time;
+        setState(prev => ({ ...prev, hasNormalPermission: normal }));
+        setState(prev => ({ ...prev, hasBlockPermission: blocking }));
+        setState(prev => ({ ...prev, hasBatteryPermission: battery }));
+        return hasAllPermission;
+      }
+      else if (mode === 'normal') {
+        let hasNormalPermission = await AppBlockModule.checkAccessibilityPermission(mode);
+        setState(prev => ({ ...prev, hasNormalPermission }));
+        return hasNormalPermission;
+      }
+      else if (mode === 'blocking') {
+        let hasBlockPermission = await AppBlockModule.checkAccessibilityPermission(mode);
+        setState(prev => ({ ...prev, hasBlockPermission }));
+        return hasBlockPermission;
+      }
+      else if (mode === 'battery') {
+        let hasBatteryPermission = await AppBlockModule.checkAccessibilityPermission(mode);
+        setState(prev => ({ ...prev, hasBatteryPermission }));
+        return hasBatteryPermission;
+      }
     } catch (error) {
       console.error('Error checking accessibility permission:', error);
       return false;
@@ -46,13 +71,14 @@ export function useAppBlock() {
   };
   
   // Open accessibility settings
-  const openAccessibilitySettings = (mode: 'normal' | 'blocking' | 'battery') => {
+  const openAccessibilitySettings = (mode: 'normal' | 'blocking' | 'battery' | 'time' ) => {
     if (Platform.OS !== 'android') return;
     if (mode === 'normal' && state.hasNormalPermission) return;
     if (mode === 'blocking' && state.hasBlockPermission) return;
     if (mode === 'normal') AppBlockModule.openAccessibilitySettings('normal');
     if (mode === 'blocking') AppBlockModule.openAccessibilitySettings('blocking');
     if (mode === 'battery') AppBlockModule.openAccessibilitySettings('battery');
+    if (mode === 'time') showUsageAccessSettings(''); 
   }
 
   

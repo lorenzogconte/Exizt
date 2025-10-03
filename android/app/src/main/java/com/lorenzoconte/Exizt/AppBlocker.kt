@@ -31,6 +31,7 @@ import java.io.ByteArrayOutputStream
 import android.os.SystemClock
 import android.net.Uri
 import android.widget.Toast
+import android.os.PowerManager
 
 object AppBlocker {
     var blockedAppsList = hashSetOf("")
@@ -62,20 +63,21 @@ object AppBlocker {
 
     fun checkAccessibilityPermission(reactContext: ReactApplicationContext, mode: String, promise: Promise) {
         try {
-            if (mode != "normal" || mode != "blocking" || mode != "battery") {
+            var enabled: Boolean = false
+            if (mode != "normal" && mode != "blocking" && mode != "battery") {
                 promise.reject("ERROR", "Invalid mode: $mode")
                 return
             }
             if (mode == "normal") {
-                val enabled = isAccessibilityServiceEnabled(reactContext)
-            if (mode == "blocking") {
-                val enabled = Settings.canDrawOverlays(reactContext)
-            }
-            if (mode == "battery") {
+                enabled = isAccessibilityServiceEnabled(reactContext)
+            } else if (mode == "blocking") {
+                enabled = Settings.canDrawOverlays(reactContext)
+            } else if (mode == "battery") {
                 val packageName = reactContext.packageName
-                val powerManager = this.getSystemService(Context.POWER_SERVICE) as PowerManager
-                val enable = powerManager.isIgnoringBatteryOptimizations(packageName)
+                val powerManager = reactContext.getSystemService(Context.POWER_SERVICE) as PowerManager
+                enabled = powerManager.isIgnoringBatteryOptimizations(packageName)
                 Log.d(TAG, "Battery optimization disabled: $enabled")
+            }
             promise.resolve(enabled)
         } catch (e: Exception) {
             promise.reject("ERROR", e.message)
@@ -83,7 +85,7 @@ object AppBlocker {
     }
 
     fun openAccessibilitySettings(reactContext: ReactApplicationContext, mode: String) {
-        if (mode != "normal" || mode != "blocking" || mode != "battery") return
+        if (mode != "normal" && mode != "blocking" && mode != "battery") return
         if (mode == "normal") {
             Toast.makeText(reactContext, "Grant accessibility settings to enable the app to work.", Toast.LENGTH_SHORT).show()
             val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)

@@ -44,6 +44,7 @@ class AppBlockAccessibilityService : AccessibilityService() {
             val dialogIntent = Intent(this, WarningActivity::class.java)
             dialogIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             dialogIntent.putExtra("packageName", packageName)
+            Log.d(TAG, "Starting WarningActivity")
             startActivity(dialogIntent)
         }
     }
@@ -76,6 +77,7 @@ class AppBlockAccessibilityService : AccessibilityService() {
     }
 
     private fun sendBlockedAppEvent(packageName: String) {
+        Log.d(TAG, "Sending blocked app event for: $packageName")
         reactContext?.let { context ->
             val params = Arguments.createMap().apply {
                 putString("packageName", packageName)
