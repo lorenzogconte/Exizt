@@ -87,20 +87,17 @@ object AppBlocker {
     fun openAccessibilitySettings(reactContext: ReactApplicationContext, mode: String) {
         if (mode != "normal" && mode != "blocking" && mode != "battery") return
         if (mode == "normal") {
-            Toast.makeText(reactContext, "Grant accessibility settings to enable the app to work.", Toast.LENGTH_SHORT).show()
             val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
             reactContext.startActivity(intent)
         }
         if (mode == "blocking") {
-            Toast.makeText(reactContext, "Grant overlay permission to enable the app to block other apps.", Toast.LENGTH_SHORT).show()
             val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 Uri.parse("package:" + reactContext.packageName))
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             reactContext.startActivity(intent)
         }
         if (mode == "battery") {
-            Toast.makeText(reactContext, "Grant battery optimization settings to enable the app to work properly.", Toast.LENGTH_SHORT).show()
             val intent = Intent()
             intent.action = Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
