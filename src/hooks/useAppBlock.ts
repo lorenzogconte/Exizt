@@ -11,7 +11,6 @@ interface AppBlockState {
   hasNormalPermission: boolean;
   hasBlockPermission: boolean;
   hasBatteryPermission: boolean;
-  hasAllPermission: boolean;
   blockedApps: string[];
   isBlockingActive: boolean;
   isFocusModeActive: boolean;
@@ -43,7 +42,7 @@ export function useAppBlock() {
         const blocking = await AppBlockModule.checkAccessibilityPermission('blocking');
         const battery = await AppBlockModule.checkAccessibilityPermission('battery');
         const time = await checkForPermission();
-        hasAllPermission = normal && blocking && battery && time;
+        const hasAllPermission = normal && blocking && battery && time;
         setState(prev => ({ ...prev, hasNormalPermission: normal }));
         setState(prev => ({ ...prev, hasBlockPermission: blocking }));
         setState(prev => ({ ...prev, hasBatteryPermission: battery }));
