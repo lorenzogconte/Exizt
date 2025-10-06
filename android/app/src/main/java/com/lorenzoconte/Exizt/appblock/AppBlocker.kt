@@ -32,6 +32,8 @@ import android.os.SystemClock
 import android.net.Uri
 import android.widget.Toast
 import android.os.PowerManager
+import android.app.AppOpsManager
+import java.util.Locale
 
 object AppBlocker {
     var blockedAppsList = hashSetOf("")
@@ -50,6 +52,8 @@ object AppBlocker {
     data class AppBlockerResult(
         val isBlocked: Boolean
     )
+
+    const val OP_BACKGROUND_START_ACTIVITY = 10021
 
     fun doesAppNeedToBeBlocked(packageName: String): AppBlockerResult {
         Log.d(TAG, "blockedAppsList: $blockedAppsList")
@@ -78,6 +82,27 @@ object AppBlocker {
                 Log.d(TAG, "Accessibility service enabled: $enabled")
             } else if (mode == "blocking") {
                 enabled = Settings.canDrawOverlays(reactContext)
+                if ("xiaomi".equals(Build.MANUFACTURER.toLowerCase(Locale.ROOT))) {
+                    val mgr = reactContext.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+                    try {
+                        Log.d(TAG, "Attempting to get checkOpNoThrow method via reflection")
+                        val method = android.app.AppOpsManager::class.java.getMethod(
+                            "checkOpNoThrow", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, String::class.java
+                        )
+                        Log.d(TAG, "Reflection method obtained: $method")
+                        val result = method.invoke(
+                            mgr,
+                            OP_BACKGROUND_START_ACTIVITY,
+                            android.os.Process.myUid(),
+                            reactContext.packageName
+                        ) as Int
+                        Log.d(TAG, "checkOpNoThrow result: $result")
+                        enabled = enabled && result == android.app.AppOpsManager.MODE_ALLOWED
+                        Log.d(TAG, "Overlay permission and background start activity permission: $enabled")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Reflection error: ${e.message}")
+                    }
+                }
             } else if (mode == "battery") {
                 val packageName = reactContext.packageName
                 val powerManager = reactContext.getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -99,6 +124,15 @@ object AppBlocker {
             Log.d(TAG, "Opened accessibility settings")
         }
         if (mode == "blocking") {
+            if ("xiaomi".equals(Build.MANUFACTURER.toLowerCase(Locale.ROOT))) {
+                Toast.makeText(reactContext, "Please enable 'Open new windows while running in the background' and 'Display pop-up windows while running in the background'", Toast.LENGTH_LONG).show()
+                val intent = Intent("miui.intent.action.APP_PERM_EDITOR")
+                intent.setClassName("com.miui.securitycenter",
+                        "com.miui.permcenter.permissions.PermissionsEditorActivity")
+                intent.putExtra("extra_pkgname", reactContext.packageName)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                reactContext.startActivity(intent)
+            }
             val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 Uri.parse("package:" + reactContext.packageName))
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -171,7 +205,7 @@ object AppBlocker {
             val prefs = reactContext.getSharedPreferences("AppBlockPrefs", Context.MODE_PRIVATE)
             val editor = prefs.edit()
             editor.putBoolean("focusModeActive", active)
-            android.util.Log.d(TAG, "setFocusMode called with active = $active")
+            Log.d(TAG, "setFocusMode called with active = $active")
             editor.apply()
             promise.resolve(true)
         } catch (e: Exception) {

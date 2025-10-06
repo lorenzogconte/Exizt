@@ -68,7 +68,6 @@ export function useUsageStats(initialPeriod: TimePeriod = 'day') {
       // Check permission first
       const hasPermission = await checkPermission();
       if (!hasPermission) {
-        Alert.alert('Permission Required', 'Usage stats permission is needed');
         return false;
       }
       

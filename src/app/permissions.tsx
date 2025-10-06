@@ -62,6 +62,9 @@ export default function PermissionRequired() {
       <Text style={{ textAlign: 'center', marginBottom: 24, color: '#fff' }}>
         You need to grant all required permissions for the app to work correctly.
       </Text>
+      <Text style={{ textAlign: 'center', marginBottom: 24, color: '#ff9800', fontSize: 15 }}>
+        Please, if you've already given all the permissions and this screen still appears just close the app and re-open it.
+      </Text>
       <PermissionRow
         label="Accessibility Permission"
         checked={hasNormalPermission}
