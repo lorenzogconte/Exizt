@@ -16,7 +16,6 @@ import com.facebook.soloader.SoLoader
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
 
-import com.lorenzoconte.Exizt.appblock.AppBlockPackage
 import com.lorenzoconte.Exizt.screentime.ScreenTimePackage
 import com.lorenzoconte.Exizt.utils.ScreenTimeUploadWorker
 
@@ -27,7 +26,7 @@ class MainApplication : Application(), ReactApplication {
         object : DefaultReactNativeHost(this) {
           override fun getPackages(): List<ReactPackage> {
             val packages = PackageList(this).packages.toMutableList()
-            packages.add(AppBlockPackage())
+            packages.add(BlockPackage())
             packages.add(ScreenTimePackage())
             return packages
           }
