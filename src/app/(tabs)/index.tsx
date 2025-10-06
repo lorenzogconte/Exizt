@@ -1,26 +1,22 @@
-import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
-import { router, useRouter } from 'expo-router';
-import React, { useEffect } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, Image, Switch } from 'react-native';
+import { useRouter } from 'expo-router';
+import React, { useState, useEffect } from 'react';
 import { useUsageStats } from '../../hooks/useUsageStats';
 import { useAppNameUtils } from '../../hooks/useAppNameUtils';
 import { useAppBlock } from '../../hooks/useAppBlock';
 import { Ionicons } from '@expo/vector-icons';
 import colors from '../../../assets/colors.js';
-import { Alert } from 'react-native';
+import { NativeModules } from 'react-native';
 
 export default function Index() {
   const router = useRouter();
 
   const {
     usageStats,
-    hasPermission,
     isLoading,
     selectedPeriod,
-    setIsLoading,
     setSelectedPeriod,
     calculateTotalScreenTime,
-    openSettings,
-    fetchScreenTime
   } = useUsageStats();
 
   const { checkPermission } = useAppBlock();
@@ -33,6 +29,8 @@ export default function Index() {
     getFocusMode,
     setFocusMode,
   } = useAppBlock();
+
+  const [isScrollBlocked, setIsScrollBlocked] = useState(false);
   
   useEffect(() => {
     const checkAllPermissions = async () => {
@@ -132,43 +130,15 @@ export default function Index() {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity 
-        className="bg-gray-700 py-3 px-4 rounded-lg mb-6"
-        onPress={() => {
-          Alert.alert(
-            'Refresh Data',
-            'Choose refresh mode:',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { 
-                text: 'Normal Refresh', 
-                onPress: async () => {
-                  setIsLoading(true);
-                  await fetchScreenTime(false);
-                }
-              },
-              { 
-                text: 'Debug Refresh', 
-                onPress: async () => {
-                  setIsLoading(true);
-                  await fetchScreenTime(true);
-                  Alert.alert('Debug Info', 'Check console logs for detailed information');
-                }
-              }
-            ]
-          );
-        }}
-      >
-        <View className="flex-row items-center justify-center">
-          <Ionicons 
-            name="refresh" 
-            size={18} 
-            color={colors.lightgrey} 
-            style={{ marginRight: 8 }}
-          />
-          <Text className="text-lightgrey font-bold">Refresh Usage Data</Text>
-        </View>
-      </TouchableOpacity>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+        <Text style={{ color: '#fff', fontWeight: 'bold', marginRight: 8 }}>Block Scrolling</Text>
+        <Switch
+          value={isScrollBlocked}
+          onValueChange={setIsScrollBlocked}
+          thumbColor={isScrollBlocked ? '#B2FF59' : '#fff'}
+          trackColor={{ false: '#444', true: '#B2FF59' }}
+        />
+      </View>
 
       {isLoading ? (
         <View className="flex-1 justify-center items-center">

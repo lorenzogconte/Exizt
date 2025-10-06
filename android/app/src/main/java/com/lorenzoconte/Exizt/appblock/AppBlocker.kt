@@ -82,6 +82,7 @@ object AppBlocker {
                 Log.d(TAG, "Accessibility service enabled: $enabled")
             } else if (mode == "blocking") {
                 enabled = Settings.canDrawOverlays(reactContext)
+                Log.d(TAG, "Overlay permission granted: $enabled")
                 if ("xiaomi".equals(Build.MANUFACTURER.toLowerCase(Locale.ROOT))) {
                     val mgr = reactContext.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
                     try {
