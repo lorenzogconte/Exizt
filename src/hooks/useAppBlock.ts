@@ -5,7 +5,7 @@ import { useUsageStats } from './useUsageStats';
 import { set } from 'date-fns';
 import { showUsageAccessSettings, checkForPermission } from '@brighthustle/react-native-usage-stats-manager';
 
-const { AppBlockModule } = NativeModules;
+const { BlockModule } = NativeModules;
 
 interface AppBlockState {
   hasNormalPermission: boolean;
@@ -38,9 +38,9 @@ export function useAppBlock() {
     
     try {
       if (mode === 'all') {
-        const normal = await AppBlockModule.checkAccessibilityPermission('normal');
-        const blocking = await AppBlockModule.checkAccessibilityPermission('blocking');
-        const battery = await AppBlockModule.checkAccessibilityPermission('battery');
+        const normal = await BlockModule.checkAccessibilityPermission('normal');
+        const blocking = await BlockModule.checkAccessibilityPermission('blocking');
+        const battery = await BlockModule.checkAccessibilityPermission('battery');
         const time = await checkForPermission();
         const hasAllPermission = normal && blocking && battery && time;
         setState(prev => ({ ...prev, hasNormalPermission: normal }));
@@ -49,17 +49,17 @@ export function useAppBlock() {
         return hasAllPermission;
       }
       else if (mode === 'normal') {
-        let hasNormalPermission = await AppBlockModule.checkAccessibilityPermission(mode);
+        let hasNormalPermission = await BlockModule.checkAccessibilityPermission(mode);
         setState(prev => ({ ...prev, hasNormalPermission }));
         return hasNormalPermission;
       }
       else if (mode === 'blocking') {
-        let hasBlockPermission = await AppBlockModule.checkAccessibilityPermission(mode);
+        let hasBlockPermission = await BlockModule.checkAccessibilityPermission(mode);
         setState(prev => ({ ...prev, hasBlockPermission }));
         return hasBlockPermission;
       }
       else if (mode === 'battery') {
-        let hasBatteryPermission = await AppBlockModule.checkAccessibilityPermission(mode);
+        let hasBatteryPermission = await BlockModule.checkAccessibilityPermission(mode);
         setState(prev => ({ ...prev, hasBatteryPermission }));
         return hasBatteryPermission;
       }
@@ -74,9 +74,9 @@ export function useAppBlock() {
     if (Platform.OS !== 'android') return;
     if (mode === 'normal' && state.hasNormalPermission) return;
     if (mode === 'blocking' && state.hasBlockPermission) return;
-    if (mode === 'normal') AppBlockModule.openAccessibilitySettings('normal');
-    if (mode === 'blocking') AppBlockModule.openAccessibilitySettings('blocking');
-    if (mode === 'battery') AppBlockModule.openAccessibilitySettings('battery');
+    if (mode === 'normal') BlockModule.openAccessibilitySettings('normal');
+    if (mode === 'blocking') BlockModule.openAccessibilitySettings('blocking');
+    if (mode === 'battery') BlockModule.openAccessibilitySettings('battery');
     if (mode === 'time') showUsageAccessSettings(''); 
   }
 
@@ -85,7 +85,7 @@ export function useAppBlock() {
     if (Platform.OS !== 'android') return;
     
     try {
-      const blockedAppsString = await AppBlockModule.getBlockedApps();
+      const blockedAppsString = await BlockModule.getBlockedApps();
       const blockedApps = blockedAppsString ? blockedAppsString.split(',') : [];
       setState(prev => ({ ...prev, blockedApps }));
     } catch (error) {
@@ -97,7 +97,7 @@ export function useAppBlock() {
     if (Platform.OS !== 'android') return;
     
     try {
-      await AppBlockModule.setBlockedApps(apps);
+      await BlockModule.setBlockedApps(apps);
       setState(prev => ({ ...prev, blockedApps: apps }));
     } catch (error) {
       console.error('Error saving blocked apps:', error);
@@ -121,7 +121,7 @@ export function useAppBlock() {
   const getFocusMode = async (): Promise<boolean> => {
     if (Platform.OS !== 'android') return false;
     try {
-      const isFocusModeActive = await AppBlockModule.getFocusMode();
+      const isFocusModeActive = await BlockModule.getFocusMode();
       setState(prev => ({ ...prev, isFocusModeActive: !!isFocusModeActive })); // <-- Add this line
       return !!isFocusModeActive;
     } catch (error) {
@@ -135,7 +135,7 @@ export function useAppBlock() {
     if (Platform.OS !== 'android') return;
     
     try {
-      await AppBlockModule.setFocusMode(active);
+      await BlockModule.setFocusMode(active);
       console.log('Focus mode set to:', active);
       setState(prev => ({ ...prev, isFocusModeActive: active }));
     } catch (error) {
@@ -148,7 +148,7 @@ export function useAppBlock() {
     
     setIsLoadingApps(true);
     try {
-      const apps = await AppBlockModule.getInstalledApplications();
+      const apps = await BlockModule.getInstalledApplications();
       console.log(`Found ${apps.length} installed applications`);
       
       const filteredApps = apps.filter((app: any) => {
@@ -185,7 +185,7 @@ export function useAppBlock() {
       const shouldBlock = timeInMinutes >= goalInMinutes;
       const remainingTime = shouldBlock ? 0 : goalInMinutes - timeInMinutes;
       
-      await AppBlockModule.setBlockingActive(shouldBlock);
+      await BlockModule.setBlockingActive(shouldBlock);
       setState(prev => ({ 
         ...prev, 
         isBlockingActive: shouldBlock,

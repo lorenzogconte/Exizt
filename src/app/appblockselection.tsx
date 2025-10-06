@@ -4,8 +4,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import colors from '../../assets/colors.js';
 import { useAppBlock } from '../hooks/useAppBlock';
-import { useUsageStats } from '../hooks/useUsageStats';
-import { useAppNameUtils } from '../hooks/useAppNameUtils';
 
 export default function AppBlockSettings() {
   const { 

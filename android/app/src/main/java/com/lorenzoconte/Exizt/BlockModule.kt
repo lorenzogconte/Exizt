@@ -1,5 +1,5 @@
 
-package com.lorenzoconte.Exizt.appblock
+package com.lorenzoconte.Exizt
 
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -7,11 +7,12 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableArray
 import android.util.Log
+import com.lorenzoconte.Exizt.appblock.AppBlocker
 
-class AppBlockModule(private val reactContext: ReactApplicationContext) 
+class BlockModule(private val reactContext: ReactApplicationContext) 
     : ReactContextBaseJavaModule(reactContext) {
 
-    override fun getName(): String = "AppBlockModule"
+    override fun getName(): String = "BlockModule"
 
     @ReactMethod
     fun addListener(eventName: String) {}
@@ -51,7 +52,7 @@ class AppBlockModule(private val reactContext: ReactApplicationContext)
 
     @ReactMethod
     fun setFocusMode(active: Boolean, promise: Promise) {
-        android.util.Log.d("AppBlockModule", "setFocusMode called with active = $active")
+        android.util.Log.d("BlockModule", "setFocusMode called with active = $active")
         AppBlocker.setFocusMode(reactContext, active, promise)
     }
 
