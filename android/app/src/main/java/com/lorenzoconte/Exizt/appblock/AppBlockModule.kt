@@ -1,5 +1,5 @@
 
-package com.lorenzoconte.Exizt
+package com.lorenzoconte.Exizt.appblock
 
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext

@@ -1,4 +1,4 @@
-package com.lorenzoconte.Exizt
+package com.lorenzoconte.Exizt.screentime
 
 import android.app.usage.UsageStatsManager
 import android.content.Context

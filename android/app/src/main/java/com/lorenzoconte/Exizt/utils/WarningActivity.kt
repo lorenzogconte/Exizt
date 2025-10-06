@@ -4,10 +4,12 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.view.View
+import android.widget.TextView
+import android.widget.Button
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import com.lorenzoconte.Exizt.AppBlockAccessibilityService
-import com.lorenzoconte.Exizt.SavedPreferencesLoader
+import com.lorenzoconte.Exizt.appblock.AppBlockAccessibilityService
+import com.lorenzoconte.Exizt.utils.SavedPreferencesLoader
 import android.util.Log
 
 class WarningActivity : AppCompatActivity() {
@@ -29,22 +31,20 @@ class WarningActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.d(TAG, "onCreate called")
         super.onCreate(savedInstanceState)
-        val savedPreferencesLoader = SavedPreferencesLoader(this)
+        setContentView(R.layout.activity_warning)
 
-        // Use WarningData default values
+        val titleView = findViewById<TextView>(R.id.warning_title)
+        val messageView = findViewById<TextView>(R.id.warning_message)
+        val cancelBtn = findViewById<Button>(R.id.btn_cancel)
+
+        // Optionally set dynamic text
         val warningData = WarningData()
+        titleView.text = warningData.title
+        messageView.text = warningData.message
 
-        // Build dialog UI
-        dialog = AlertDialog.Builder(this)
-            .setTitle(warningData.title)
-            .setMessage(warningData.message)
-            .setCancelable(false)
-            .setNegativeButton("Cancel") { _, _ ->
-                finish()
-            }
-            .create()
-
-        dialog?.show()
+        cancelBtn.setOnClickListener {
+            finish()
+        }
     }
 
     private fun launchPackage(pkg: String) {

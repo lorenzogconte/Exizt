@@ -1,10 +1,11 @@
-package com.lorenzoconte.Exizt
+package com.lorenzoconte.Exizt.utils
 
 import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.lorenzoconte.Exizt.AppBlocker
+import com.lorenzoconte.Exizt.appblock.AppBlocker
 import com.lorenzoconte.Exizt.MainActivity
+import com.lorenzoconte.Exizt.WarningActivity
 
 class SavedPreferencesLoader(private val context: Context) {
 

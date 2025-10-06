@@ -1,4 +1,4 @@
-package com.lorenzoconte.Exizt
+package com.lorenzoconte.Exizt.screentime
 
 import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule

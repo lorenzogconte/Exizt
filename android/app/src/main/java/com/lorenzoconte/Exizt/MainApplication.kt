@@ -16,6 +16,10 @@ import com.facebook.soloader.SoLoader
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
 
+import com.lorenzoconte.Exizt.appblock.AppBlockPackage
+import com.lorenzoconte.Exizt.screentime.ScreenTimePackage
+import com.lorenzoconte.Exizt.utils.ScreenTimeUploadWorker
+
 class MainApplication : Application(), ReactApplication {
 
   override val reactNativeHost: ReactNativeHost = ReactNativeHostWrapper(

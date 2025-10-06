@@ -35,9 +35,9 @@
     <activity
       android:name=".WarningActivity"
       android:exported="false"
-      android:theme="@style/Theme.AppCompat.Light.Dialog.Alert" />
+      android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
     <service
-        android:name=".AppBlockAccessibilityService"
+        android:name=".appblock.AppBlockAccessibilityService"
         android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
         android:exported="false">
         <intent-filter>

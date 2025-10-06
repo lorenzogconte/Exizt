@@ -1,4 +1,4 @@
-package com.lorenzoconte.Exizt
+package com.lorenzoconte.Exizt.appblock
 
 import android.content.Context
 import android.content.Intent
@@ -63,6 +63,11 @@ object AppBlocker {
 
     fun checkAccessibilityPermission(reactContext: ReactApplicationContext, mode: String, promise: Promise) {
         try {
+            val enabledServices = Settings.Secure.getString(
+                reactContext.contentResolver,
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            )
+            Log.d(TAG, "Enabled services: $enabledServices")
             var enabled: Boolean = false
             if (mode != "normal" && mode != "blocking" && mode != "battery") {
                 promise.reject("ERROR", "Invalid mode: $mode")
@@ -70,6 +75,7 @@ object AppBlocker {
             }
             if (mode == "normal") {
                 enabled = isAccessibilityServiceEnabled(reactContext)
+                Log.d(TAG, "Accessibility service enabled: $enabled")
             } else if (mode == "blocking") {
                 enabled = Settings.canDrawOverlays(reactContext)
             } else if (mode == "battery") {
@@ -90,6 +96,7 @@ object AppBlocker {
             val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
             reactContext.startActivity(intent)
+            Log.d(TAG, "Opened accessibility settings")
         }
         if (mode == "blocking") {
             val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,

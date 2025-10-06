@@ -3,4 +3,16 @@
   <color name="iconBackground">#ffffff</color>
   <color name="colorPrimary">#023c69</color>
   <color name="colorPrimaryDark">#041421</color>
+  <color name="lightgrey">#d0d6d6</color>
+  <color name="mint">#86b9b0</color>
+  <color name="turquoise">#4c7273</color>
+  <color name="darkteal">#042630</color>
+  <color name="deepblue">#041421</color>
+  <color name="gray">#626363</color>
+  <color name="verydarkgreen">#021302</color>
+  <color name="quitedarkgreen">#012202</color>
+  <color name="darkgreen">#034504</color>
+  <color name="green">#046206</color>
+  <color name="lightgreen">#008501</color>
+  <color name="verylightgreen">#AAFA92</color>
 </resources>
