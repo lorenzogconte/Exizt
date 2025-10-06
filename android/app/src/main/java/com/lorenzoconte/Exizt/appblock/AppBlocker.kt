@@ -1,4 +1,4 @@
-package com.lorenzoconte.Exizt
+package com.lorenzoconte.Exizt.appblock
 
 import android.content.Context
 import android.content.Intent
@@ -28,56 +28,127 @@ import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import java.io.ByteArrayOutputStream
+import android.os.SystemClock
+import android.net.Uri
+import android.widget.Toast
+import android.os.PowerManager
+import android.app.AppOpsManager
+import java.util.Locale
 
-class AppBlockModule(private val reactContext: ReactApplicationContext) 
-    : ReactContextBaseJavaModule(reactContext) {
-    
-    private val TAG = "AppBlockModule"
-    
-    // Move eventEmitter inside the class
-    private val eventEmitter by lazy { 
-        reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java) 
+object AppBlocker {
+    var blockedAppsList = hashSetOf("")
+
+    const val TAG = "AppBlocker"
+
+    data class FocusModeData(
+        var isTurnedOn: Boolean = false,
+        val endTime: Long = -1,
+        var selectedApps: HashSet<String> = hashSetOf()
+    )
+
+    // Singleton instance to hold current focus mode state
+    var focusModeData: FocusModeData = FocusModeData()
+
+    data class AppBlockerResult(
+        val isBlocked: Boolean
+    )
+
+    const val OP_BACKGROUND_START_ACTIVITY = 10021
+
+    fun doesAppNeedToBeBlocked(packageName: String): AppBlockerResult {
+        Log.d(TAG, "blockedAppsList: $blockedAppsList")
+        return AppBlockerResult(isBlocked = blockedAppsList.contains(packageName))
     }
 
-    init {
-        AppBlockAccessibilityService.setReactContext(reactContext)
+    fun isAppInFocus(packageName: String): AppBlockerResult {
+        Log.d(TAG, "focusSelectedApps: ${focusModeData.selectedApps}")
+        return AppBlockerResult(isBlocked = focusModeData.selectedApps.contains(packageName))
     }
 
-    // Add these methods inside the class
-    @ReactMethod
-    fun addListener(eventName: String) {
-        // Required for RN built-in EventEmitter
-        // No implementation needed
-    }
-
-    @ReactMethod
-    fun removeListeners(count: Int) {
-        // Required for RN built-in EventEmitter
-        // No implementation needed
-    }
-
-    override fun getName(): String = "AppBlockModule"
-
-    @ReactMethod
-    fun checkAccessibilityPermission(promise: Promise) {
+    fun checkAccessibilityPermission(reactContext: ReactApplicationContext, mode: String, promise: Promise) {
         try {
-            val enabled = isAccessibilityServiceEnabled()
+            val enabledServices = Settings.Secure.getString(
+                reactContext.contentResolver,
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            )
+            Log.d(TAG, "Enabled services: $enabledServices")
+            var enabled: Boolean = false
+            if (mode != "normal" && mode != "blocking" && mode != "battery") {
+                promise.reject("ERROR", "Invalid mode: $mode")
+                return
+            }
+            if (mode == "normal") {
+                enabled = isAccessibilityServiceEnabled(reactContext)
+                Log.d(TAG, "Accessibility service enabled: $enabled")
+            } else if (mode == "blocking") {
+                enabled = Settings.canDrawOverlays(reactContext)
+                if ("xiaomi".equals(Build.MANUFACTURER.toLowerCase(Locale.ROOT))) {
+                    val mgr = reactContext.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+                    try {
+                        Log.d(TAG, "Attempting to get checkOpNoThrow method via reflection")
+                        val method = android.app.AppOpsManager::class.java.getMethod(
+                            "checkOpNoThrow", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, String::class.java
+                        )
+                        Log.d(TAG, "Reflection method obtained: $method")
+                        val result = method.invoke(
+                            mgr,
+                            OP_BACKGROUND_START_ACTIVITY,
+                            android.os.Process.myUid(),
+                            reactContext.packageName
+                        ) as Int
+                        Log.d(TAG, "checkOpNoThrow result: $result")
+                        enabled = enabled && result == android.app.AppOpsManager.MODE_ALLOWED
+                        Log.d(TAG, "Overlay permission and background start activity permission: $enabled")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Reflection error: ${e.message}")
+                    }
+                }
+            } else if (mode == "battery") {
+                val packageName = reactContext.packageName
+                val powerManager = reactContext.getSystemService(Context.POWER_SERVICE) as PowerManager
+                enabled = powerManager.isIgnoringBatteryOptimizations(packageName)
+                Log.d(TAG, "Battery optimization disabled: $enabled")
+            }
             promise.resolve(enabled)
         } catch (e: Exception) {
             promise.reject("ERROR", e.message)
         }
     }
 
-    @ReactMethod
-    fun openAccessibilitySettings() {
-        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        reactContext.startActivity(intent)
+    fun openAccessibilitySettings(reactContext: ReactApplicationContext, mode: String) {
+        if (mode != "normal" && mode != "blocking" && mode != "battery") return
+        if (mode == "normal") {
+            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            reactContext.startActivity(intent)
+            Log.d(TAG, "Opened accessibility settings")
+        }
+        if (mode == "blocking") {
+            if ("xiaomi".equals(Build.MANUFACTURER.toLowerCase(Locale.ROOT))) {
+                Toast.makeText(reactContext, "Please enable 'Open new windows while running in the background' and 'Display pop-up windows while running in the background'", Toast.LENGTH_LONG).show()
+                val intent = Intent("miui.intent.action.APP_PERM_EDITOR")
+                intent.setClassName("com.miui.securitycenter",
+                        "com.miui.permcenter.permissions.PermissionsEditorActivity")
+                intent.putExtra("extra_pkgname", reactContext.packageName)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                reactContext.startActivity(intent)
+            }
+            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:" + reactContext.packageName))
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            reactContext.startActivity(intent)
+        }
+        if (mode == "battery") {
+            val intent = Intent()
+            intent.action = Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            reactContext.startActivity(intent)
+        }  
     }
 
-    @ReactMethod
-    fun setBlockedApps(apps: ReadableArray, promise: Promise) {
+    fun setBlockedApps(reactContext: ReactApplicationContext, apps: ReadableArray, promise: Promise) {
         try {
+            Log.d(TAG, "setBlockedApps called with apps: $apps")
             val appsString = StringBuilder()
             for (i in 0 until apps.size()) {
                 appsString.append(apps.getString(i))
@@ -85,20 +156,17 @@ class AppBlockModule(private val reactContext: ReactApplicationContext)
                     appsString.append(",")
                 }
             }
-            
             val prefs = reactContext.getSharedPreferences("AppBlockPrefs", Context.MODE_PRIVATE)
             val editor = prefs.edit()
             editor.putString("blockedApps", appsString.toString())
             editor.apply()
-            
             promise.resolve(true)
         } catch (e: Exception) {
             promise.reject("ERROR", e.message)
         }
     }
 
-    @ReactMethod
-    fun getBlockedApps(promise: Promise) {
+    fun getBlockedApps(reactContext: ReactApplicationContext, promise: Promise) {
         try {
             val prefs = reactContext.getSharedPreferences("AppBlockPrefs", Context.MODE_PRIVATE)
             val blockedAppsString = prefs.getString("blockedApps", "")
@@ -108,8 +176,7 @@ class AppBlockModule(private val reactContext: ReactApplicationContext)
         }
     }
 
-    @ReactMethod
-    fun setBlockingActive(active: Boolean, promise: Promise) {
+    fun setBlockingActive(reactContext: ReactApplicationContext, active: Boolean, promise: Promise) {
         try {
             val prefs = reactContext.getSharedPreferences("AppBlockPrefs", Context.MODE_PRIVATE)
             val editor = prefs.edit()
@@ -121,12 +188,24 @@ class AppBlockModule(private val reactContext: ReactApplicationContext)
         }
     }
 
-    @ReactMethod
-    fun setFocusModeActive(active: Boolean, promise: Promise) {
+    fun getFocusMode(reactContext: ReactApplicationContext, promise: Promise) {
+        try {
+            Log.d(TAG, "getFocusMode called and")
+            val prefs = reactContext.getSharedPreferences("AppBlockPrefs", Context.MODE_PRIVATE)
+            val focusModeActive = prefs.getBoolean("focusModeActive", false)
+            Log.d(TAG, "getFocusMode called and focusModeActive = $focusModeActive")
+            promise.resolve(focusModeActive)
+        } catch (e: Exception) {
+            promise.reject("ERROR", e.message)
+        }
+    }
+
+    fun setFocusMode(reactContext: ReactApplicationContext, active: Boolean, promise: Promise) {
         try {
             val prefs = reactContext.getSharedPreferences("AppBlockPrefs", Context.MODE_PRIVATE)
             val editor = prefs.edit()
             editor.putBoolean("focusModeActive", active)
+            Log.d(TAG, "setFocusMode called with active = $active")
             editor.apply()
             promise.resolve(true)
         } catch (e: Exception) {
@@ -134,19 +213,15 @@ class AppBlockModule(private val reactContext: ReactApplicationContext)
         }
     }
 
-    private fun isAccessibilityServiceEnabled(): Boolean {
+    private fun isAccessibilityServiceEnabled(reactContext: ReactApplicationContext): Boolean {
         val service = "${reactContext.packageName}/${AppBlockAccessibilityService::class.java.canonicalName}"
         val enabledServices = Settings.Secure.getString(
-                reactContext.contentResolver,
-                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
-        
+            reactContext.contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
         return enabledServices != null && enabledServices.contains(service)
     }
 
-    // Add this new method to your existing AppBlockModule class
-
-    @ReactMethod
-    fun getInstalledApplications(promise: Promise) {
+    fun getInstalledApplications(reactContext: ReactApplicationContext, promise: Promise) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val packageManager = reactContext.packageManager
@@ -154,42 +229,33 @@ class AppBlockModule(private val reactContext: ReactApplicationContext)
                 val mainIntent = Intent(Intent.ACTION_MAIN).apply {
                     addCategory(Intent.CATEGORY_LAUNCHER)
                 }
-                // Use appropriate flag depending on Android version
                 val launchableApps = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     packageManager.queryIntentActivities(mainIntent, PackageManager.ResolveInfoFlags.of(0L))
                 } else {
                     @Suppress("DEPRECATION")
                     packageManager.queryIntentActivities(mainIntent, 0)
                 }
-
                 val seenPackages = HashSet<String>()
                 val appsToSort = mutableListOf<Map<String, Any>>()
-
                 for (resolveInfo in launchableApps) {
                     val appInfo = resolveInfo.activityInfo.applicationInfo
                     val packageName = appInfo.packageName
-
                     if (packageName == reactContext.packageName) {
                         continue
                     }
-
                     if (seenPackages.contains(packageName)) {
                         continue
                     }
                     seenPackages.add(packageName)
-
                     val appName = packageManager.getApplicationLabel(appInfo).toString()
-                    // Get the app icon as base64
                     var iconBase64 = ""
                     try {
                         val icon = packageManager.getApplicationIcon(appInfo)
                         val bitmap = drawableToBitmap(icon)
                         iconBase64 = bitmapToBase64(bitmap)
                     } catch (e: Exception) {
-                        Log.e("AppBlockModule", "Error getting icon for $packageName: ${e.message}")
-                        // No icon provided if there's an error
+                        Log.e(TAG, "Error getting icon for $packageName: ${e.message}")
                     }
-                    // Add to our temporary list
                     appsToSort.add(mapOf(
                         "packageName" to packageName,
                         "appName" to appName,
@@ -197,7 +263,6 @@ class AppBlockModule(private val reactContext: ReactApplicationContext)
                     ))
                 }
                 Log.d("AppBlockModule", "INSTALLED APPLICATIONS: ${result.toString()}")
-                
                 appsToSort.sortBy { (it["appName"] as String).lowercase() }
                 for (app in appsToSort) {
                     val appMap = WritableNativeMap()
@@ -217,36 +282,25 @@ class AppBlockModule(private val reactContext: ReactApplicationContext)
         }
     }
 
-    private fun isSystemApplication(applicationInfo: ApplicationInfo) :Boolean {
-        if((applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0)
-            return true
-        return false
-    }
-    // Helper function to convert Drawable to Bitmap
     private fun drawableToBitmap(drawable: Drawable): Bitmap {
         if (drawable is BitmapDrawable) {
             return drawable.bitmap
         }
-        
         val bitmap = if (drawable.intrinsicWidth <= 0 || drawable.intrinsicHeight <= 0) {
             Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
         } else {
             Bitmap.createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
         }
-        
         val canvas = Canvas(bitmap)
         drawable.setBounds(0, 0, canvas.width, canvas.height)
         drawable.draw(canvas)
         return bitmap
     }
 
-    // Helper function to convert Bitmap to Base64
     private fun bitmapToBase64(bitmap: Bitmap): String {
         val byteArrayOutputStream = ByteArrayOutputStream()
-        // Compress to a smaller size to improve performance
         bitmap.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream)
         val byteArray = byteArrayOutputStream.toByteArray()
         return android.util.Base64.encodeToString(byteArray, android.util.Base64.DEFAULT)
     }
-
 }

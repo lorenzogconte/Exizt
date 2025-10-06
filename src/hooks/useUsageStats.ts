@@ -46,40 +46,11 @@ export function useUsageStats(initialPeriod: TimePeriod = 'day') {
   const [isRefreshingScreenTime, setIsRefreshingScreenTime] = useState(false);
 
   // Permission handling
-  const requestUsageStatsPermission = async () => {
-    if (Platform.OS !== 'android') {
-      Alert.alert('Not Supported', 'Usage stats are only available on Android devices');
-      setIsLoading(false);
-      return false;
-    }
-  
-    try {
-      const hasPermission = await checkForPermission();
-      setHasPermission(hasPermission);
-      
-      if (!hasPermission) {
-        Alert.alert(
-          'Permission Required',
-          'To track screen time, you need to grant usage access permission.',
-          [
-            {
-              text: 'Cancel',
-              style: 'cancel',
-              onPress: () => setIsLoading(false)
-            },
-            {
-              text: 'Open Settings',
-              onPress: () => openSettings(),
-            }
-          ]
-        );
-      }
-      return hasPermission;
-    } catch (error) {
-      console.error('Error checking permission:', error);
-      setIsLoading(false);
-      return false;
-    }
+  const checkPermission = async () => {
+    if (Platform.OS !== 'android') return false;
+    const hasPermission = await checkForPermission();
+    setHasPermission(hasPermission);
+    return hasPermission;
   };
 
   const openSettings = () => {
@@ -95,9 +66,8 @@ export function useUsageStats(initialPeriod: TimePeriod = 'day') {
       const isDebug = debugMode || forceDebug;
       
       // Check permission first
-      const hasPermission = await checkForPermission();
+      const hasPermission = await checkPermission();
       if (!hasPermission) {
-        Alert.alert('Permission Required', 'Usage stats permission is needed');
         return false;
       }
       
@@ -182,10 +152,7 @@ export function useUsageStats(initialPeriod: TimePeriod = 'day') {
   useEffect(() => {
     const checkPermissionAndFetchData = async () => {
       try {
-        const granted = await requestUsageStatsPermission();
-        if (granted) {
           await fetchScreenTime();
-        }
       } catch (error) {
         console.error("Error in permission check or data fetch:", error);
         setIsLoading(false);

@@ -1,4 +1,4 @@
-package com.lorenzoconte.Exizt
+package com.lorenzoconte.Exizt.utils
 
 import android.content.Context
 import androidx.work.*

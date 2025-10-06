@@ -9,10 +9,8 @@ import { useAppNameUtils } from '../hooks/useAppNameUtils';
 
 export default function AppBlockSettings() {
   const { 
-    hasPermission, 
     blockedApps, 
-    toggleBlockedApp, 
-    openAccessibilitySettings,
+    toggleBlockedApp,
     installedApps,
     isLoadingApps,
     fetchInstalledApps
@@ -22,7 +20,6 @@ export default function AppBlockSettings() {
     // Fetch installed apps when component mounts
     fetchInstalledApps();
   }, []);
-  console.log('Installed Apps:', installedApps);
 
   const renderAppItem = ({ item }: { item: any }) => {
     const isBlocked = blockedApps.includes(item.packageName);
@@ -72,24 +69,8 @@ export default function AppBlockSettings() {
         </TouchableOpacity>
         <Text className="text-verylightgreen text-2xl font-bold">Apps to Block</Text>
       </View>
-      
-      {!hasPermission ? (
-        <View className="flex-1 justify-center items-center p-4">
-          <Ionicons name="lock-closed" size={64} color={colors.lightgrey} />
-          <Text className="text-white text-center text-lg font-bold mt-4 mb-2">
-            Permission Required
-          </Text>
-          <Text className="text-lightgrey text-center mb-6">
-            Exizt needs accessibility permission to block apps when you exceed your screen time goal.
-          </Text>
-          <TouchableOpacity 
-            className="bg-verylightgreen px-6 py-3 rounded-md"
-            onPress={openAccessibilitySettings}
-          >
-            <Text className="text-black font-bold">Grant Permission</Text>
-          </TouchableOpacity>
-        </View>
-      ) : isLoadingApps ? (
+
+      {isLoadingApps ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color={colors.verylightgreen} />
           <Text className="text-lightgrey mt-4">Loading apps...</Text>

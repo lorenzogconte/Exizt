@@ -1,6 +1,6 @@
 import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
-import { router } from 'expo-router';
-import React from 'react';
+import { router, useRouter } from 'expo-router';
+import React, { useEffect } from 'react';
 import { useUsageStats } from '../../hooks/useUsageStats';
 import { useAppNameUtils } from '../../hooks/useAppNameUtils';
 import { useAppBlock } from '../../hooks/useAppBlock';
@@ -9,6 +9,8 @@ import colors from '../../../assets/colors.js';
 import { Alert } from 'react-native';
 
 export default function Index() {
+  const router = useRouter();
+
   const {
     usageStats,
     hasPermission,
@@ -20,18 +22,32 @@ export default function Index() {
     openSettings,
     fetchScreenTime
   } = useUsageStats();
+
+  const { checkPermission } = useAppBlock();
   
   const { formatUsageTime } = useAppNameUtils();
 
   const {
-    hasPermission: hasBlockPermission,
     isFocusModeActive,
     remainingTime,
+    getFocusMode,
     setFocusMode,
-    openAccessibilitySettings
   } = useAppBlock();
   
-  // Add these function in your component
+  useEffect(() => {
+    const checkAllPermissions = async () => {
+      const hasAllPermissions = await checkPermission('all');
+      if (!hasAllPermissions) {
+        router.replace('/permissions');
+      }
+    };
+    checkAllPermissions();
+  }, []);
+
+  useEffect(() => {
+    getFocusMode();
+  }, []);
+  
   const navigateToAppBlockSettings = () => {
     router.push('/appblockselection');
   };
@@ -157,18 +173,6 @@ export default function Index() {
       {isLoading ? (
         <View className="flex-1 justify-center items-center">
           <Text className="text-lightgrey text-lg">Loading usage data...</Text>
-        </View>
-      ) : !hasPermission ? (
-        <View className="flex-1 justify-center items-center">
-          <Text className="text-lightgrey text-lg text-center mb-6">
-            Permission is required to track screen time
-          </Text>
-          <TouchableOpacity 
-            className="bg-lightgreen px-6 py-3 rounded-full"
-            onPress={openSettings}
-          >
-            <Text className="text-lightgrey font-bold">Open Settings</Text>
-          </TouchableOpacity>
         </View>
       ) : usageStats.length === 0 ? (
         <View className="flex-1 justify-center items-center">

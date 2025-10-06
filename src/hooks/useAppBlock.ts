@@ -3,11 +3,14 @@ import { NativeModules, NativeEventEmitter, Platform, AppState } from 'react-nat
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUsageStats } from './useUsageStats';
 import { set } from 'date-fns';
+import { showUsageAccessSettings, checkForPermission } from '@brighthustle/react-native-usage-stats-manager';
 
 const { AppBlockModule } = NativeModules;
 
 interface AppBlockState {
-  hasPermission: boolean;
+  hasNormalPermission: boolean;
+  hasBlockPermission: boolean;
+  hasBatteryPermission: boolean;
   blockedApps: string[];
   isBlockingActive: boolean;
   isFocusModeActive: boolean;
@@ -16,7 +19,9 @@ interface AppBlockState {
 
 export function useAppBlock() {
   const [state, setState] = useState<AppBlockState>({
-    hasPermission: false,
+    hasNormalPermission: false,
+    hasBlockPermission: false,
+    hasBatteryPermission: false,
     blockedApps: [],
     isBlockingActive: false,
     isFocusModeActive: false,
@@ -28,13 +33,36 @@ export function useAppBlock() {
   const { calculateTotalScreenTime } = useUsageStats();
   
   // Check if we have accessibility permission
-  const checkPermission = async () => {
+  const checkPermission = async (mode: 'normal' | 'blocking' | 'battery' | 'all') => {
     if (Platform.OS !== 'android') return false;
     
     try {
-      const hasPermission = await AppBlockModule.checkAccessibilityPermission();
-      setState(prev => ({ ...prev, hasPermission }));
-      return hasPermission;
+      if (mode === 'all') {
+        const normal = await AppBlockModule.checkAccessibilityPermission('normal');
+        const blocking = await AppBlockModule.checkAccessibilityPermission('blocking');
+        const battery = await AppBlockModule.checkAccessibilityPermission('battery');
+        const time = await checkForPermission();
+        const hasAllPermission = normal && blocking && battery && time;
+        setState(prev => ({ ...prev, hasNormalPermission: normal }));
+        setState(prev => ({ ...prev, hasBlockPermission: blocking }));
+        setState(prev => ({ ...prev, hasBatteryPermission: battery }));
+        return hasAllPermission;
+      }
+      else if (mode === 'normal') {
+        let hasNormalPermission = await AppBlockModule.checkAccessibilityPermission(mode);
+        setState(prev => ({ ...prev, hasNormalPermission }));
+        return hasNormalPermission;
+      }
+      else if (mode === 'blocking') {
+        let hasBlockPermission = await AppBlockModule.checkAccessibilityPermission(mode);
+        setState(prev => ({ ...prev, hasBlockPermission }));
+        return hasBlockPermission;
+      }
+      else if (mode === 'battery') {
+        let hasBatteryPermission = await AppBlockModule.checkAccessibilityPermission(mode);
+        setState(prev => ({ ...prev, hasBatteryPermission }));
+        return hasBatteryPermission;
+      }
     } catch (error) {
       console.error('Error checking accessibility permission:', error);
       return false;
@@ -42,9 +70,14 @@ export function useAppBlock() {
   };
   
   // Open accessibility settings
-  const openAccessibilitySettings = () => {
+  const openAccessibilitySettings = (mode: 'normal' | 'blocking' | 'battery' | 'time' ) => {
     if (Platform.OS !== 'android') return;
-    AppBlockModule.openAccessibilitySettings();
+    if (mode === 'normal' && state.hasNormalPermission) return;
+    if (mode === 'blocking' && state.hasBlockPermission) return;
+    if (mode === 'normal') AppBlockModule.openAccessibilitySettings('normal');
+    if (mode === 'blocking') AppBlockModule.openAccessibilitySettings('blocking');
+    if (mode === 'battery') AppBlockModule.openAccessibilitySettings('battery');
+    if (mode === 'time') showUsageAccessSettings(''); 
   }
 
   
@@ -85,12 +118,25 @@ export function useAppBlock() {
     await saveBlockedApps(newBlockedApps);
   };
   
+  const getFocusMode = async (): Promise<boolean> => {
+    if (Platform.OS !== 'android') return false;
+    try {
+      const isFocusModeActive = await AppBlockModule.getFocusMode();
+      setState(prev => ({ ...prev, isFocusModeActive: !!isFocusModeActive })); // <-- Add this line
+      return !!isFocusModeActive;
+    } catch (error) {
+      console.error('Error getting focus mode state:', error);
+      return false;
+    }
+  };
+
   // Set focus mode active/inactive
   const setFocusMode = async (active: boolean) => {
     if (Platform.OS !== 'android') return;
     
     try {
-      await AppBlockModule.setFocusModeActive(active);
+      await AppBlockModule.setFocusMode(active);
+      console.log('Focus mode set to:', active);
       setState(prev => ({ ...prev, isFocusModeActive: active }));
     } catch (error) {
       console.error('Error setting focus mode:', error);
@@ -113,11 +159,6 @@ export function useAppBlock() {
       });
     
       console.log(`After filtering: ${filteredApps.length} user-friendly apps remain`);
-      
-      // Log some filtered apps for debugging
-      filteredApps.slice(0, 10).forEach((app: any, index: number) => {
-        console.log(`${index + 1}. ${app.appName} (${app.packageName})`);
-      });
 
       setInstalledApps(filteredApps);
 
@@ -160,23 +201,15 @@ export function useAppBlock() {
     // Set up app state change listener to update when app comes to foreground
     const appStateSubscription = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active') {
-        checkPermission();
+        checkPermission('normal');
         loadBlockedApps();
         checkScreenTimeLimit();
       }
     });
     
-    // Set up listener for blocked app events
-    let blockedAppListener: any;
-    if (Platform.OS === 'android') {
-      const eventEmitter = new NativeEventEmitter(AppBlockModule);
-      blockedAppListener = eventEmitter.addListener('onAppBlocked', (event) => {
-        // You can do something when an app is blocked
-        console.log('App blocked:', event.packageName);
-      });
-    }
     
-    checkPermission();
+    checkPermission('normal');
+    checkPermission('blocking');
     loadBlockedApps();
     checkScreenTimeLimit();
     
@@ -185,11 +218,10 @@ export function useAppBlock() {
     
     return () => {
       appStateSubscription.remove();
-      if (blockedAppListener) blockedAppListener.remove();
       clearInterval(intervalId);
     };
   }, []);
-  
+
   return {
     ...state,
     checkPermission,
@@ -200,5 +232,6 @@ export function useAppBlock() {
     installedApps,
     isLoadingApps,
     fetchInstalledApps,
+    getFocusMode,
   };
 }
