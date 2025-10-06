@@ -2,8 +2,11 @@ import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useAppBlock } from '../hooks/useAppBlock';
 import { useUsageStats } from '../hooks/useUsageStats';
+import { useRouter } from 'expo-router';
 
 export default function PermissionRequired() {
+  const router = useRouter();
+
   const {
     hasNormalPermission,
     hasBlockPermission,
@@ -17,6 +20,12 @@ export default function PermissionRequired() {
   useEffect(() => {
     checkPermission('all');
   }, []);
+
+  useEffect(() => {
+    if (hasNormalPermission && hasBlockPermission && hasBatteryPermission && hasPermission) {
+      router.replace('/');
+    }
+  }, [hasNormalPermission, hasBlockPermission, hasBatteryPermission, hasPermission]);
 
   const PermissionRow = ({
     label,
