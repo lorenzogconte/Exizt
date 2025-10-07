@@ -19,7 +19,8 @@
 
         <TextView
             android:id="@+id/warning_title"
-            android:text="Blocked"
+            android:fontFamily="@font/montserrat_bold"
+        android:text="Blocked"
             android:textColor="#00E676"
             android:textSize="32sp"
             android:textStyle="bold"
@@ -28,26 +29,23 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="12dp"/>
 
-        <TextView
-            android:id="@+id/warning_message"
-            android:text="Access to this app is blocked"
-            android:textColor="#FFFFFF"
-            android:textSize="18sp"
-            android:gravity="center"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="28dp"/>
+    <TextView
+        android:id="@+id/warning_message"
+        android:fontFamily="@font/montserrat_medium"
+        android:text="Access to this app is blocked"
+        android:textColor="#fff"
+        android:textSize="20sp"
+        android:gravity="center"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="32dp"/>
 
-        <Button
-            android:id="@+id/btn_cancel"
-            android:text="Cancel"
-            android:background="@drawable/rounded_button_bg"
-            android:textColor="#FFFFFF"
-            android:textSize="18sp"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginTop="8dp"
-            android:elevation="4dp"/>
-    </LinearLayout>
-
+    <Button
+        android:id="@+id/btn_cancel"
+        android:fontFamily="@font/montserrat_medium"
+        android:text="Cancel"
+        android:background="@color/verylightgreen"
+        android:textColor="#000"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
 </LinearLayout>
