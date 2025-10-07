@@ -95,5 +95,11 @@ class SavedPreferencesLoader(private val context: Context) {
             object : TypeToken<List<String>>() {}.type
         return gson.fromJson(json, type)
     }
+
+    fun getViewBlockerEnabled(): Boolean {
+        val sharedPreferences =
+            context.getSharedPreferences("view_blocker_prefs", Context.MODE_PRIVATE)
+        return sharedPreferences.getBoolean("isViewBlockerEnabled", false)
+    }
      
 }

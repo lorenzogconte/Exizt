@@ -41,7 +41,7 @@ class AppBlockAccessibilityService : AccessibilityService() {
         if (shouldBlockApp(packageName)) {
             Log.d(TAG, "Blocking app: $packageName")
             pressHome()
-            Thread.sleep(300)
+            Thread.sleep(150)
             val dialogIntent = Intent(this, WarningActivity::class.java)
             dialogIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             dialogIntent.putExtra("packageName", packageName)
@@ -55,7 +55,6 @@ class AppBlockAccessibilityService : AccessibilityService() {
         if (packageName == "com.lorenzoconte.Exizt") {
             return false
         }
-        
         // Don't block system UI
         if (packageName == "com.android.systemui") {
             return false
@@ -75,19 +74,6 @@ class AppBlockAccessibilityService : AccessibilityService() {
         val blockedApps = blockedAppsString?.split(",") ?: emptyList()
         
         return blockedApps.any { it.trim() == packageName }
-    }
-
-    private fun sendBlockedAppEvent(packageName: String) {
-        Log.d(TAG, "Sending blocked app event for: $packageName")
-        reactContext?.let { context ->
-            val params = Arguments.createMap().apply {
-                putString("packageName", packageName)
-            }
-            
-            context
-                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-                .emit("onAppBlocked", params)
-        }
     }
 
     override fun onInterrupt() {
