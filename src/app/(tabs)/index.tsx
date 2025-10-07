@@ -79,8 +79,14 @@ export default function Index() {
     checkAllPermissions();
   }, []);
 
+  if (!fontsLoaded) {
+    return null; // Or a loading spinner
+  }
+
   useEffect(() => {
-    getFocusMode();
+    BlockModule.getViewBlocker().then((enabled: boolean) => {
+      setIsScrollBlocked(enabled);
+    });
   }, []);
   
   const navigateToAppBlockSettings = () => {
