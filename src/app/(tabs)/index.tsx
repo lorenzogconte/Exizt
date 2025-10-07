@@ -1,11 +1,12 @@
-import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
-import { router, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, Image, Switch } from 'react-native';
+import { useRouter } from 'expo-router';
+import React, { useState, useEffect } from 'react';
 import { useUsageStats } from '../../hooks/useUsageStats';
 import { useAppNameUtils } from '../../hooks/useAppNameUtils';
 import { useAppBlock } from '../../hooks/useAppBlock';
 import { Ionicons } from '@expo/vector-icons';
 import colors from '../../../assets/colors.js';
+import { NativeModules } from 'react-native';
 import { Alert } from 'react-native';
 import * as Font from 'expo-font';
 
@@ -14,14 +15,10 @@ export default function Index() {
 
   const {
     usageStats,
-    hasPermission,
     isLoading,
     selectedPeriod,
-    setIsLoading,
     setSelectedPeriod,
     calculateTotalScreenTime,
-    openSettings,
-    fetchScreenTime
   } = useUsageStats();
   
   const { formatUsageTime } = useAppNameUtils();
@@ -34,6 +31,8 @@ export default function Index() {
     checkPermission
   } = useAppBlock();
 
+  const [isScrollBlocked, setIsScrollBlocked] = useState(false);
+  
   const [fontsLoaded, setFontsLoaded] = useState(false);
 
   useEffect(() => {
@@ -160,6 +159,16 @@ export default function Index() {
             <Text className="text-lightgrey font-montserrat_bold">Block Apps</Text>
           </View>
         </TouchableOpacity>
+      </View>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+        <Text style={{ color: '#fff', fontWeight: 'bold', marginRight: 8 }}>Block Scrolling</Text>
+        <Switch
+          value={isScrollBlocked}
+          onValueChange={setIsScrollBlocked}
+          thumbColor={isScrollBlocked ? '#B2FF59' : '#fff'}
+          trackColor={{ false: '#444', true: '#B2FF59' }}
+        />
       </View>
 
       {isLoading ? (
