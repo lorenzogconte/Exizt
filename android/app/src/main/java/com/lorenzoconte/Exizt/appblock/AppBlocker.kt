@@ -8,7 +8,6 @@ import android.util.Log
 import android.os.Build
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
-import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.modules.core.DeviceEventManagerModule
@@ -35,10 +34,12 @@ import android.os.PowerManager
 import android.app.AppOpsManager
 import java.util.Locale
 
-object AppBlocker {
-    var blockedAppsList = hashSetOf("")
+const val TAG = "AppBlocker"
 
-    const val TAG = "AppBlocker"
+const val OP_BACKGROUND_START_ACTIVITY = 10021
+
+class AppBlocker {
+    var blockedAppsList = hashSetOf("")
 
     data class FocusModeData(
         var isTurnedOn: Boolean = false,
@@ -52,8 +53,6 @@ object AppBlocker {
     data class AppBlockerResult(
         val isBlocked: Boolean
     )
-
-    const val OP_BACKGROUND_START_ACTIVITY = 10021
 
     fun doesAppNeedToBeBlocked(packageName: String): AppBlockerResult {
         Log.d(TAG, "blockedAppsList: $blockedAppsList")

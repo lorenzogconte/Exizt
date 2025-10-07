@@ -7,6 +7,8 @@ import { useAppBlock } from '../../hooks/useAppBlock';
 import { Ionicons } from '@expo/vector-icons';
 import colors from '../../../assets/colors.js';
 import { NativeModules } from 'react-native';
+
+const { BlockModule } = NativeModules;
 import { Alert } from 'react-native';
 import * as Font from 'expo-font';
 
@@ -62,6 +64,11 @@ export default function Index() {
     getFocusMode();
   }, []);
 
+  const handleScrollBlocked = (enabled: boolean) => {
+    setIsScrollBlocked(enabled);
+    BlockModule.setViewBlocker(enabled);
+  };
+
   useEffect(() => {
     const checkAllPermissions = async () => {
       const hasAllPermissions = await checkPermission('all');
@@ -75,7 +82,12 @@ export default function Index() {
   if (!fontsLoaded) {
     return null; // Or a loading spinner
   }
-  
+
+  useEffect(() => {
+    BlockModule.getViewBlocker().then((enabled: boolean) => {
+      setIsScrollBlocked(enabled);
+    });
+  }, []);
   
   const navigateToAppBlockSettings = () => {
     router.push('/appblockselection');
@@ -165,7 +177,7 @@ export default function Index() {
         <Text style={{ color: '#fff', fontWeight: 'bold', marginRight: 8 }}>Block Scrolling</Text>
         <Switch
           value={isScrollBlocked}
-          onValueChange={setIsScrollBlocked}
+          onValueChange={handleScrollBlocked}
           thumbColor={isScrollBlocked ? '#B2FF59' : '#fff'}
           trackColor={{ false: '#444', true: '#B2FF59' }}
         />
