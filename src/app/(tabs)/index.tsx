@@ -1,12 +1,13 @@
 import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { router, useRouter } from 'expo-router';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useUsageStats } from '../../hooks/useUsageStats';
 import { useAppNameUtils } from '../../hooks/useAppNameUtils';
 import { useAppBlock } from '../../hooks/useAppBlock';
 import { Ionicons } from '@expo/vector-icons';
 import colors from '../../../assets/colors.js';
 import { Alert } from 'react-native';
+import * as Font from 'expo-font';
 
 export default function Index() {
   const router = useRouter();
@@ -22,8 +23,6 @@ export default function Index() {
     openSettings,
     fetchScreenTime
   } = useUsageStats();
-
-  const { checkPermission } = useAppBlock();
   
   const { formatUsageTime } = useAppNameUtils();
 
@@ -32,8 +31,38 @@ export default function Index() {
     remainingTime,
     getFocusMode,
     setFocusMode,
+    checkPermission
   } = useAppBlock();
-  
+
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+
+  useEffect(() => {
+    Font.loadAsync({
+      'montserrat_black': require('../../../assets/fonts/montserrat_black.ttf'),
+      'montserrat_blackitalic': require('../../../assets/fonts/montserrat_blackitalic.ttf'),
+      'montserrat_bold': require('../../../assets/fonts/montserrat_bold.ttf'),
+      'montserrat_bolditalic': require('../../../assets/fonts/montserrat_bolditalic.ttf'),
+      'montserrat_extrabold': require('../../../assets/fonts/montserrat_extrabold.ttf'),
+      'montserrat_extrabolditalic': require('../../../assets/fonts/montserrat_extrabolditalic.ttf'),
+      'montserrat_extralight': require('../../../assets/fonts/montserrat_extralight.ttf'),
+      'montserrat_extralightitalic': require('../../../assets/fonts/montserrat_extralightitalic.ttf'),
+      'montserrat_italic': require('../../../assets/fonts/montserrat_italic.ttf'),
+      'montserrat_light': require('../../../assets/fonts/montserrat_light.ttf'),
+      'montserrat_lightitalic': require('../../../assets/fonts/montserrat_lightitalic.ttf'),
+      'montserrat_medium': require('../../../assets/fonts/montserrat_medium.ttf'),
+      'montserrat_mediumitalic': require('../../../assets/fonts/montserrat_mediumitalic.ttf'),
+      'montserrat_regular': require('../../../assets/fonts/montserrat_regular.ttf'),
+      'montserrat_semibold': require('../../../assets/fonts/montserrat_semibold.ttf'),
+      'montserrat_semibolditalic': require('../../../assets/fonts/montserrat_semibolditalic.ttf'),
+      'montserrat_thin': require('../../../assets/fonts/montserrat_thin.ttf'),
+      'montserrat_thinitalic': require('../../../assets/fonts/montserrat_thinitalic.ttf'),
+    }).then(() => setFontsLoaded(true));
+  }, []);
+
+  useEffect(() => {
+    getFocusMode();
+  }, []);
+
   useEffect(() => {
     const checkAllPermissions = async () => {
       const hasAllPermissions = await checkPermission('all');
@@ -44,9 +73,10 @@ export default function Index() {
     checkAllPermissions();
   }, []);
 
-  useEffect(() => {
-    getFocusMode();
-  }, []);
+  if (!fontsLoaded) {
+    return null; // Or a loading spinner
+  }
+  
   
   const navigateToAppBlockSettings = () => {
     router.push('/appblockselection');
@@ -62,7 +92,7 @@ export default function Index() {
         className={`px-4 py-2 rounded-full ${selectedPeriod === 'day' ? 'bg-lightgrey' : 'bg-transparent'}`}
         onPress={() => setSelectedPeriod('day')}
       >
-        <Text className={`font-semibold ${selectedPeriod === 'day' ? 'text-black' : 'text-gray'}`}>
+        <Text className={`${selectedPeriod === 'day' ? 'font-montserrat_bold text-black' : 'font-montserrat_medium text-gray'}`}>
           Today
         </Text>
       </TouchableOpacity>
@@ -71,7 +101,7 @@ export default function Index() {
         className={`px-4 py-2 rounded-full ${selectedPeriod === 'week' ? 'bg-lightgrey' : 'bg-transparent'}`}
         onPress={() => setSelectedPeriod('week')}
       >
-        <Text className={`font-semibold ${selectedPeriod === 'week' ? 'text-black' : 'text-gray'}`}>
+        <Text className={`${selectedPeriod === 'week' ? 'font-montserrat_bold text-black' : 'font-montserrat_medium text-gray'}`}>
           Week
         </Text>
       </TouchableOpacity>
@@ -80,7 +110,7 @@ export default function Index() {
         className={`px-4 py-2 rounded-full ${selectedPeriod === 'month' ? 'bg-lightgrey' : 'bg-transparent'}`}
         onPress={() => setSelectedPeriod('month')}
       >
-        <Text className={`font-semibold ${selectedPeriod === 'month' ? 'text-black' : 'text-gray'}`}>
+        <Text className={`${selectedPeriod === 'month' ? 'font-montserrat_bold text-black' : 'font-montserrat_medium text-gray'}`}>
           Month
         </Text>
       </TouchableOpacity>
@@ -91,8 +121,8 @@ export default function Index() {
     <View className="flex-1 bg-black px-4 py-6">
       <View className="flex-row justify-between items-center mb-4">
         <View>
-          <Text className="text-green text-3xl font-bold">Screen Time</Text>
-          <Text className="text-white text-lg">Track your digital wellbeing</Text>
+          <Text className="font-montserrat_extrabold text-green text-3xl">Screen Time</Text>
+          <Text className="font-montserrat_light text-white text-lg">Track your digital wellbeing</Text>
         </View>
       </View>
 
@@ -110,7 +140,7 @@ export default function Index() {
               color={isFocusModeActive ? colors.black : colors.lightgrey} 
               style={{ marginRight: 8 }}
             />
-            <Text className={`font-bold ${isFocusModeActive ? 'text-black' : 'text-lightgrey'}`}>
+            <Text className={`font-montserrat_bold ${isFocusModeActive ? 'text-black' : 'text-lightgrey'}`}>
               Focus Mode
             </Text>
           </View>
@@ -127,56 +157,18 @@ export default function Index() {
               color={colors.lightgrey} 
               style={{ marginRight: 8 }}
             />
-            <Text className="text-lightgrey font-bold">Block Apps</Text>
+            <Text className="text-lightgrey font-montserrat_bold">Block Apps</Text>
           </View>
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity 
-        className="bg-gray-700 py-3 px-4 rounded-lg mb-6"
-        onPress={() => {
-          Alert.alert(
-            'Refresh Data',
-            'Choose refresh mode:',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { 
-                text: 'Normal Refresh', 
-                onPress: async () => {
-                  setIsLoading(true);
-                  await fetchScreenTime(false);
-                }
-              },
-              { 
-                text: 'Debug Refresh', 
-                onPress: async () => {
-                  setIsLoading(true);
-                  await fetchScreenTime(true);
-                  Alert.alert('Debug Info', 'Check console logs for detailed information');
-                }
-              }
-            ]
-          );
-        }}
-      >
-        <View className="flex-row items-center justify-center">
-          <Ionicons 
-            name="refresh" 
-            size={18} 
-            color={colors.lightgrey} 
-            style={{ marginRight: 8 }}
-          />
-          <Text className="text-lightgrey font-bold">Refresh Usage Data</Text>
-        </View>
-      </TouchableOpacity>
-
       {isLoading ? (
         <View className="flex-1 justify-center items-center">
-          <Text className="text-lightgrey text-lg">Loading usage data...</Text>
+          <Text className="text-lightgrey text-lg font-montserrat_regular">Loading usage data...</Text>
         </View>
       ) : usageStats.length === 0 ? (
         <View className="flex-1 justify-center items-center">
-          <Text className="text-lightgrey text-lg text-center">
+          <Text className="text-lightgrey text-lg text-center font-montserrat_thin">
             No usage data available for this period
           </Text>
         </View>
@@ -184,13 +176,13 @@ export default function Index() {
         <>
           {/* Rendering logic remains the same */}
           <View className="bg-gray rounded-lg p-4 mb-6">
-            <Text className="text-white text-base mb-1">Total Screen Time</Text>
-            <Text className="text-white text-2xl font-bold">
+            <Text className="font-montserrat_semibold text-white text-base mb-1">Total Screen Time</Text>
+            <Text className="font-montserrat_extrabold text-white text-2xl font-bold">
               {formatUsageTime(calculateTotalScreenTime())}
             </Text>
           </View>
           
-          <Text className="text-white text-xl font-bold mb-4">Top Apps</Text>
+          <Text className="text-white text-xl font-montserrat_black mb-4">Top Apps</Text>
           
           <ScrollView className="flex-1">
             {usageStats.slice(0, 10).map((app, index) => (
@@ -198,12 +190,12 @@ export default function Index() {
                 <View className="flex-row justify-between items-center">
                   <View className="flex-row items-center">
                     <View>
-                      <Text className="text-lightgrey font-bold">
+                      <Text className="text-lightgrey font-montserrat_light">
                         {app.appName}
                       </Text>
                     </View>
                   </View>
-                  <Text className="text-lightgrey font-semibold">
+                  <Text className="text-lightgrey font-montserrat_medium">
                     {formatUsageTime(app.totalTimeInForeground)}
                   </Text>
                 </View>

@@ -9,6 +9,7 @@
 
     <TextView
         android:id="@+id/warning_title"
+        android:fontFamily="@font/montserrat_bold"
         android:text="Blocked"
         android:textColor="#B2FF59"
         android:textSize="32sp"
@@ -20,6 +21,7 @@
 
     <TextView
         android:id="@+id/warning_message"
+        android:fontFamily="@font/montserrat_medium"
         android:text="Access to this app is blocked"
         android:textColor="#fff"
         android:textSize="20sp"
@@ -30,6 +32,7 @@
 
     <Button
         android:id="@+id/btn_cancel"
+        android:fontFamily="@font/montserrat_medium"
         android:text="Cancel"
         android:background="@color/verylightgreen"
         android:textColor="#000"
