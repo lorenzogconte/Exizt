@@ -14,6 +14,7 @@ export function useAuth() {
   const [name, setName] = useState('');
   const [dailyScreenTimeGoal, setDailyScreenTimeGoal] = useState(2);
   const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState('');
   
   // Validation states
   const [errors, setErrors] = useState({
@@ -76,14 +77,14 @@ export function useAuth() {
   // Login logic
   const handleLogin = async () => {
     if (!username || !password) {
-      Alert.alert('Error', 'Please enter both username and password');
+      setLoginError('Username or password is wrong');
       return;
     }
 
     try {
       setIsLoading(true);
+      setLoginError('');
       console.log("API URL:", API_URL);
-      
       const response = await axios.post(`${API_URL}/login/`, {
         username,
         password,
@@ -110,25 +111,20 @@ export function useAuth() {
         router.replace('/(tabs)/profile');
       } else {
         console.error("No token received in login response");
-        Alert.alert('Login Error', 'Authentication failed - no token received');
+        setLoginError('Username or password is wrong');
       }
     } catch (error) {
-      console.error("Login error:", error);
+      console.log("Login error:", error);
       if (axios.isAxiosError(error)) {
         if (error.response) {
-          const errorMessage = error.response.data.message || 'Invalid credentials';
-          console.log("Server error response:", error.response.data);
-          Alert.alert('Error', errorMessage);
+          setLoginError('Username or password is wrong');
         } else if (error.request) {
-          console.log("No response received:", error.request);
-          Alert.alert('Error', 'No response from server. Check your connection.');
+          setLoginError('No response from server. Check your connection.');
         } else {
-          console.log("Error setting up request:", error.message);
-          Alert.alert('Error', 'Failed to make request.');
+          setLoginError('Failed to make request.');
         }
       } else {
-        console.log("Unexpected error:", error);
-        Alert.alert('Error', 'An unexpected error occurred.');
+        setLoginError('An unexpected error occurred.');
       }
     } finally {
       setIsLoading(false);
@@ -252,19 +248,21 @@ export function useAuth() {
     setName,
     dailyScreenTimeGoal,
     setDailyScreenTimeGoal,
-    
+
     // Validation
     errors,
     validateEmail,
     validatePassword,
     validateUsername,
     validateName,
-    
+
     // Actions
     handleLogin,
     handleSignUp,
     resetForm,
     isLoading,
-    logout, 
+    logout,
+    loginError,
+    setLoginError,
   };
 }

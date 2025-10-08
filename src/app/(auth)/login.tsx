@@ -11,7 +11,9 @@ const LogIn = () => {
         password, 
         setPassword, 
         handleLogin, 
-        isLoading 
+        isLoading,
+        loginError,
+        setLoginError
     } = useAuth();
     
     return (
@@ -21,19 +23,29 @@ const LogIn = () => {
                 placeholder="Username or Email"
                 placeholderTextColor={colors.lightgrey}
                 value={username}
-                onChangeText={setUsername}
-                className="bg-black border border-lightgrey w-full rounded-md p-3 mb-5 text-lightgrey"
+                onChangeText={text => {
+                    setUsername(text);
+                    if (loginError) setLoginError('');
+                }}
+                className={`bg-black border w-full rounded-md p-3 mb-5 text-lightgrey ${loginError ? 'border-red-500' : 'border-lightgrey'}`}
                 autoCapitalize="none"
             />
             <TextInput
                 placeholder="Password"
                 placeholderTextColor={colors.lightgrey}
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={text => {
+                    setPassword(text);
+                    if (loginError) setLoginError('');
+                }}
                 secureTextEntry
-                className="bg-black border border-lightgrey w-full rounded-md p-3 mb-8 text-lightgrey"
+                className={`bg-black border w-full rounded-md p-3 mb-2 text-lightgrey ${loginError ? 'border-red-500' : 'border-lightgrey'}`}
             />
-            
+            {loginError ? (
+                <Text className="text-red-500 w-full text-center mb-6">Username or password is wrong</Text>
+            ) : (
+                <View style={{ height: 24 }} />
+            )}
             <TouchableOpacity 
                 onPress={handleLogin} 
                 disabled={isLoading}
@@ -44,7 +56,6 @@ const LogIn = () => {
                     <Text className="text-black font-bold text-center text-lg">Log In</Text>
                 )}
             </TouchableOpacity>
-            
             <View className="flex-row items-center mt-4">
                 <Text className="text-lightgrey mr-2">Don't have an account?</Text>
                 <Link href="/signup" asChild>
