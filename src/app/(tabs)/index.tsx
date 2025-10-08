@@ -79,15 +79,15 @@ export default function Index() {
     checkAllPermissions();
   }, []);
 
-  if (!fontsLoaded) {
-    return null; // Or a loading spinner
-  }
-
   useEffect(() => {
     BlockModule.getViewBlocker().then((enabled: boolean) => {
       setIsScrollBlocked(enabled);
     });
   }, []);
+
+  if (!fontsLoaded) {
+    return null; // Or a loading spinner
+  }
   
   const navigateToAppBlockSettings = () => {
     router.push('/appblockselection');
