@@ -159,16 +159,16 @@ export default function Index() {
         
         <TouchableOpacity
           className="flex-1 bg-gray-700 py-3 px-4 rounded-lg ml-2"
-          onPress={navigateToAppBlockSettings}
+          onPress={() => router.push('/appgrouplimits')}
         >
           <View className="flex-row items-center justify-center">
             <Ionicons 
-              name="apps" 
+              name="timer-outline" 
               size={18} 
               color={colors.lightgrey} 
               style={{ marginRight: 8 }}
             />
-            <Text className="text-lightgrey font-montserrat_bold">Block Apps</Text>
+            <Text className="text-lightgrey font-montserrat_bold">Usage Limits</Text>
           </View>
         </TouchableOpacity>
       </View>

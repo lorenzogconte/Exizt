@@ -39,6 +39,7 @@ const val TAG = "AppBlocker"
 const val OP_BACKGROUND_START_ACTIVITY = 10021
 
 class AppBlocker {
+
     var blockedAppsList = hashSetOf("")
 
     data class FocusModeData(
@@ -303,4 +304,91 @@ class AppBlocker {
         val byteArray = byteArrayOutputStream.toByteArray()
         return android.util.Base64.encodeToString(byteArray, android.util.Base64.DEFAULT)
     }
+
+    data class AppGroup(
+        val name: String,
+        val apps: List<String>,
+        val timeLimit: Int
+    )
+
+    // Save an app group to SharedPreferences as JSON
+    fun saveAppGroup(reactContext: ReactApplicationContext, name: String, apps: ReadableArray, timeLimit: Int, promise: Promise) {
+        Log.d(TAG, "saveAppGroup called with name: $name, apps: $apps, timeLimit: $timeLimit")
+        try {
+            val prefs = reactContext.getSharedPreferences("AppBlockPrefs", Context.MODE_PRIVATE)
+            val groupsJson = prefs.getString("appGroups", "[]")
+            Log.d(TAG, "Current appGroups JSON: $groupsJson")
+            val groups = org.json.JSONArray(groupsJson)
+            // Check for duplicate name
+            for (i in 0 until groups.length()) {
+                val group = groups.getJSONObject(i)
+                if (group.getString("name") == name) {
+                    Log.d(TAG, "Group name already exists: $name")
+                    promise.reject("ERROR", "Group name already exists")
+                    return
+                }
+            }
+            val appsList = mutableListOf<String>()
+            for (i in 0 until apps.size()) {
+                appsList.add(apps.getString(i) ?: "")
+            }
+            Log.d(TAG, "Apps list for new group: $appsList")
+            val newGroup = org.json.JSONObject()
+            newGroup.put("name", name)
+            newGroup.put("apps", org.json.JSONArray(appsList))
+            newGroup.put("timeLimit", timeLimit)
+            groups.put(newGroup)
+            val editor = prefs.edit()
+            editor.putString("appGroups", groups.toString())
+            editor.apply()
+            Log.d(TAG, "New appGroups JSON after save: ${groups.toString()}")
+            promise.resolve(true)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in saveAppGroup: ${e.message}")
+            promise.reject("ERROR", e.message)
+        }
+    }
+
+    // Get all app groups from SharedPreferences as JSON array
+    fun getAppGroups(reactContext: ReactApplicationContext, promise: Promise) {
+        Log.d(TAG, "getAppGroups called")
+        try {
+            val prefs = reactContext.getSharedPreferences("AppBlockPrefs", Context.MODE_PRIVATE)
+            val groupsJson = prefs.getString("appGroups", "[]")
+            Log.d(TAG, "Returning appGroups JSON: $groupsJson")
+            promise.resolve(groupsJson)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in getAppGroups: ${e.message}")
+            promise.reject("ERROR", e.message)
+        }
+    }
+
+        // Calculate total screen time for a group of apps (in milliseconds)
+    fun getAppGroupScreenTime(context: Context, appGroup: List<String>): Long {
+        val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as android.app.usage.UsageStatsManager
+        val startOfToday = java.util.Calendar.getInstance().apply {
+            timeZone = java.util.TimeZone.getDefault()
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val currentTime = System.currentTimeMillis()
+        val stats = usageStatsManager.queryUsageStats(
+            android.app.usage.UsageStatsManager.INTERVAL_DAILY,
+            startOfToday,
+            currentTime
+        )
+        return stats.filter { appGroup.contains(it.packageName) }
+            .sumOf { it.totalTimeInForeground }
+    }
+
+    // Check if the app group has exceeded its time limit (limit in minutes)
+    fun isAppGroupLimitExceeded(context: Context, appGroup: List<String>, timeLimitMinutes: Int): Boolean {
+        Log.d(TAG, "isAppGroupLimitExceeded called with: $appGroup, timeLimitMinutes: $timeLimitMinutes")
+        val totalScreenTimeMs = getAppGroupScreenTime(context, appGroup)
+        val limitMs = timeLimitMinutes * 60 * 1000
+        return totalScreenTimeMs >= limitMs
+    }
+    
 }

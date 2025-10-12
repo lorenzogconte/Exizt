@@ -16,8 +16,11 @@ export default function RootLayout() {
     useEffect(() => {
         const checkToken = async () => {
             const token = await AsyncStorage.getItem('authToken');
-            console.log('Auth check - token exists:', !!token);
-            
+            if (!!token) {
+                console.log('Auth check - token exists:', token);
+            } else {
+                console.log('Auth check - no token found');
+            }
 
             if (!token && segments[0] !== '(auth)') {
                 console.log('User is not authenticated, redirecting to login');
@@ -41,14 +44,6 @@ export default function RootLayout() {
         >
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen
-                name="appblockselection"
-                options={{
-                    title: "Block Apps",
-                    headerShown: false,
-                    presentation: "modal"
-                }}
-            />
         </Stack>
     );
 }

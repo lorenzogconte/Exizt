@@ -10,6 +10,7 @@ import android.content.Context.USAGE_STATS_SERVICE
 import com.facebook.react.bridge.*
 import kotlinx.coroutines.*
 import java.util.*
+import android.util.Log
 
 class ScreenTimeModule(private val reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
 
@@ -89,13 +90,19 @@ class ScreenTimeModule(private val reactContext: ReactApplicationContext) : Reac
     fun getWeeklyScreenTime(promise: Promise) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Calculate start of week (last 7 days)
+                // Calculate start of week (Monday of current week)
                 val startOfWeek = Calendar.getInstance().apply {
                     timeZone = TimeZone.getDefault()
-                    add(Calendar.DAY_OF_YEAR, -7)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                    set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
                 }.timeInMillis
 
                 val currentTime = System.currentTimeMillis()
+                Log.d("ScreenTimeModule", "Current time: $currentTime")
+                Log.d("ScreenTimeModule", "Start of week: $startOfWeek")
                 val usageStatsManager = reactContext.getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
                 val packageManager = reactContext.packageManager
 
@@ -149,10 +156,14 @@ class ScreenTimeModule(private val reactContext: ReactApplicationContext) : Reac
     fun getMonthlyScreenTime(promise: Promise) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Calculate start of month (last 30 days)
+                // Calculate start of month (first day of current month)
                 val startOfMonth = Calendar.getInstance().apply {
                     timeZone = TimeZone.getDefault()
-                    add(Calendar.DAY_OF_YEAR, -30)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                    set(Calendar.DAY_OF_MONTH, 1)
                 }.timeInMillis
 
                 val currentTime = System.currentTimeMillis()

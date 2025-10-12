@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "scheme": "myExizt",
     "orientation": "portrait",
-    "icon": "./assets/images/logoapp.png",
+    "icon": "./assets/images/leaf.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
@@ -22,7 +22,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/logoapp.png",
+          "image": "./assets/images/leaf.png",
           "resizeMode": "cover",
           "backgroundColor": "#000000",
           "enableFullScreenImage_legacy": true

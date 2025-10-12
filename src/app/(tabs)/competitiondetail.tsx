@@ -3,10 +3,10 @@ import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Image, Modal
   SafeAreaView, KeyboardAvoidingView, Platform, Alert, ScrollView, TextInput} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, router } from 'expo-router';
-import colors from '../../assets/colors.js';
-import { useCompetitions } from '../hooks/useCompetitions';
-import { Competition, CompetitionParticipant } from '../models/competitionModel';
-import { CompetitionForm, CompetitionFormData } from '../components/CompetitionForm';
+import colors from '../../../assets/colors.js';
+import { useCompetitions } from '../../hooks/useCompetitions';
+import { Competition, CompetitionParticipant } from '../../models/competitionModel';
+import { CompetitionForm, CompetitionFormData } from '../../components/CompetitionForm';
 
 export default function CompetitionDetailsScreen() {
   const { id } = useLocalSearchParams();

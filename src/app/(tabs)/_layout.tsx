@@ -109,6 +109,20 @@ const _Layout = () => {
                 }}
                 initialParams={{ isCurrentUser: true }}
             />
+            <Tabs.Screen
+                name="appgrouplimits"
+                options={{
+                    href: null,
+                    headerShown: false,
+                }}
+            />
+            <Tabs.Screen
+                name="competitiondetail"
+                options={{
+                    href: null,
+                    headerShown: false,
+                }}
+            />
         </Tabs>
     );
 }

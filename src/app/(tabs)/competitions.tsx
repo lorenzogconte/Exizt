@@ -52,7 +52,7 @@ export default function CompetitionsScreen() {
 
   const navigateToCompetitionDetails = (competitionId: number) => {
     router.push({
-      pathname: '../competitiondetail',
+      pathname: '/competitiondetail',
       params: { id: competitionId }
     });
   };

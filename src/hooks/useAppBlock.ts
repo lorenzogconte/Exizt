@@ -29,8 +29,34 @@ export function useAppBlock() {
   });
   const [installedApps, setInstalledApps] = useState<any[]>([]);
   const [isLoadingApps, setIsLoadingApps] = useState(false);
+  const [appGroups, setAppGroups] = useState<any[]>([]);
   
   const { calculateTotalScreenTime } = useUsageStats();
+
+  useEffect(() => {
+    // Set up app state change listener to update when app comes to foreground
+    const appStateSubscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        checkPermission('normal');
+        loadBlockedApps();
+        checkScreenTimeLimit();
+      }
+    });
+    
+    
+    checkPermission('normal');
+    checkPermission('blocking');
+    loadBlockedApps();
+    checkScreenTimeLimit();
+    
+    // Update blocking state every minute
+    const intervalId = setInterval(checkScreenTimeLimit, 60000);
+    
+    return () => {
+      appStateSubscription.remove();
+      clearInterval(intervalId);
+    };
+  }, []);
   
   // Check if we have accessibility permission
   const checkPermission = async (mode: 'normal' | 'blocking' | 'battery' | 'all') => {
@@ -195,32 +221,34 @@ export function useAppBlock() {
       console.error('Error checking screen time limit:', error);
     }
   };
-  
-  // Initialize everything
-  useEffect(() => {
-    // Set up app state change listener to update when app comes to foreground
-    const appStateSubscription = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'active') {
-        checkPermission('normal');
-        loadBlockedApps();
-        checkScreenTimeLimit();
+
+  const saveAppGroup = async (group: { name: string; apps: string[]; timeLimit: number }) => {
+    setAppGroups(prev => [...prev, group]);
+    console.log('Saving app group:', group);
+    if (Platform.OS === 'android') {
+      try {
+        await BlockModule.saveAppGroup(group.name, group.apps, group.timeLimit);
+        await getAppGroups(); // Refresh appGroups from native after saving
+        console.log('App group saved natively:', group);
+      } catch (error) {
+        console.error('Error saving app group natively:', error);
       }
-    });
-    
-    
-    checkPermission('normal');
-    checkPermission('blocking');
-    loadBlockedApps();
-    checkScreenTimeLimit();
-    
-    // Update blocking state every minute
-    const intervalId = setInterval(checkScreenTimeLimit, 60000);
-    
-    return () => {
-      appStateSubscription.remove();
-      clearInterval(intervalId);
-    };
-  }, []);
+    }
+  };
+
+  const getAppGroups = async () => {
+    if (Platform.OS !== 'android') return;
+    try {
+      const groupsJson = await BlockModule.getAppGroups();
+      const groups = JSON.parse(groupsJson);
+      setAppGroups(groups);
+      return groups;
+    } catch (error) {
+      console.error('Error retrieving app groups:', error);
+      setAppGroups([]);
+      return [];
+    }
+  };
 
   return {
     ...state,
@@ -233,5 +261,8 @@ export function useAppBlock() {
     isLoadingApps,
     fetchInstalledApps,
     getFocusMode,
+    appGroups,
+    saveAppGroup,
+    getAppGroups,
   };
 }

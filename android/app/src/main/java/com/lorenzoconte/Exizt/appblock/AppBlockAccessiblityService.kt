@@ -5,6 +5,7 @@ import android.content.Intent
 import android.view.accessibility.AccessibilityEvent
 import android.content.Context
 import android.util.Log
+import org.json.JSONArray
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.modules.core.DeviceEventManagerModule
@@ -41,7 +42,7 @@ class AppBlockAccessibilityService : AccessibilityService() {
         if (shouldBlockApp(packageName)) {
             Log.d(TAG, "Blocking app: $packageName")
             pressHome()
-            Thread.sleep(150)
+            Thread.sleep(50)
             val dialogIntent = Intent(this, WarningActivity::class.java)
             dialogIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             dialogIntent.putExtra("packageName", packageName)
@@ -52,28 +53,39 @@ class AppBlockAccessibilityService : AccessibilityService() {
 
     private fun shouldBlockApp(packageName: String): Boolean {
         // Don't block our own app
-        if (packageName == "com.lorenzoconte.Exizt") {
+        if (packageName == "com.lorenzoconte.Exizt" || packageName == "com.miui.home" || packageName == "com.android.systemui") {
             return false
         }
-        // Don't block system UI
-        if (packageName == "com.android.systemui") {
-            return false
-        }
-        
+
+        Log.d(TAG, "Checking if app should be blocked: $packageName")
         // Check if it's in the blocked list and if blocking is active
         val prefs = getSharedPreferences("AppBlockPrefs", Context.MODE_PRIVATE)
-        val blockingActive = prefs.getBoolean("blockingActive", false)
         val focusModeActive = prefs.getBoolean("focusModeActive", false)
         Log.d("focusModeActive", focusModeActive.toString())
-        if (!blockingActive && !focusModeActive) {
+        if (!focusModeActive) {
             return false
         }
-        
-        // Get the set of blocked apps
-        val blockedAppsString = prefs.getString("blockedApps", "")
-        val blockedApps = blockedAppsString?.split(",") ?: emptyList()
-        
-        return blockedApps.any { it.trim() == packageName }
+
+        val groupsJson = prefs.getString("appGroups", "[]")
+        val groupsArr = JSONArray(groupsJson)
+        var shouldBlockForGroup = false
+        for (i in 0 until groupsArr.length()) {
+            val groupObj = groupsArr.getJSONObject(i)
+            Log.d(TAG, "Checking group: ${groupObj.getString("name")}")
+            val appsArr = groupObj.getJSONArray("apps")
+            val timeLimit = groupObj.getInt("timeLimit")
+            val appList = mutableListOf<String>()
+            for (j in 0 until appsArr.length()) {
+                appList.add(appsArr.getString(j))
+            }
+            if (appList.contains(packageName)) {
+                Log.d(TAG, "App $packageName found in group")
+                if (AppBlocker().isAppGroupLimitExceeded(this, appList, timeLimit)) {
+                    return true
+                }
+            }
+        }
+        return false;
     }
 
     override fun onInterrupt() {

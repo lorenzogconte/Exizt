@@ -76,4 +76,14 @@ class BlockModule(private val reactContext: ReactApplicationContext)
         viewBlocker.setViewBlockerEnabled(reactContext, enabled, promise)
     }
 
+    @ReactMethod
+    fun getAppGroups(promise: Promise) {
+        appBlocker.getAppGroups(reactContext, promise)
+    }
+
+    @ReactMethod
+    fun saveAppGroup(name: String, apps: ReadableArray, timeLimit: Int, promise: Promise) {
+        appBlocker.saveAppGroup(reactContext, name, apps, timeLimit, promise)
+    }
+
 }
