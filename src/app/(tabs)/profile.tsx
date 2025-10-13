@@ -317,27 +317,12 @@ export default function ProfileScreen() {
                                 <Text className="text-black font-bold ml-2">Add Friend</Text>
                             </TouchableOpacity>
                             
-                            {/* Profile details */}
-                            <View className="w-full rounded-md bg-gray-900 p-4 mt-5">
-                                <View className="flex-row mb-2">
-                                    <Text className="text-white font-bold w-1/3">Username:</Text>
-                                    <Text className="text-lightgrey">{username}</Text>
-                                </View>
-                                <View className="flex-row mb-2">
-                                    <Text className="text-white font-bold w-1/3">Email:</Text>
-                                    <Text className="text-lightgrey">{email}</Text>
-                                </View>
-                                <View className="flex-row mb-2">
-                                    <Text className="text-white font-bold w-1/3">Name:</Text>
-                                    <Text className="text-lightgrey">{name}</Text>
-                                </View>
-                            </View>
                         </View>
                     )}
                     
                     {/* Logout button */}
                     <TouchableOpacity
-                        className="bg-red-500 px-8 py-3 rounded-full mt-8"
+                        className="bg-red-500 px-8 py-3 rounded-full mt-8 bottom-1" 
                         onPress={handleLogout}
                     >
                         <Text className="text-white font-bold text-center">Logout</Text>

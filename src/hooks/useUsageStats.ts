@@ -4,19 +4,14 @@ import { showUsageAccessSettings, checkForPermission } from '@brighthustle/react
 const { ScreenTimeStats } = NativeModules;
 
 // ScreenTimeStats interface functions
-export async function getTodaysScreenTime() {
+export async function getTodaysScreenTime(year: number, month: number, day: number) {
   if (Platform.OS !== 'android') return { totalScreenTimeMs: 0, appUsage: {} };
-  return await ScreenTimeStats.getTodaysScreenTime();
+  return await ScreenTimeStats.getDailyScreenTime(year, month, day);
 }
 
 export async function getWeeklyScreenTime() {
   if (Platform.OS !== 'android') return { totalScreenTimeMs: 0, appUsage: {} };
   return await ScreenTimeStats.getWeeklyScreenTime();
-}
-
-export async function getMonthlyScreenTime() {
-  if (Platform.OS !== 'android') return { totalScreenTimeMs: 0, appUsage: {} };
-  return await ScreenTimeStats.getMonthlyScreenTime();
 }
 
 export async function formatTimeSpent(timeInMillis: number) {
@@ -29,6 +24,7 @@ export interface AppUsageData {
   totalTimeInForeground: number;
   lastTimeUsed: number;
   appName?: string;
+  appLabel?: string;
   iconBase64?: string;
 }
 
@@ -40,6 +36,7 @@ export function useUsageStats(initialPeriod: TimePeriod = 'day') {
   const [hasPermission, setHasPermission] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>(initialPeriod);
+  const [selectedDay, setSelectedDay] = useState<Date>(new Date());
   const [debugMode, setDebugMode] = useState(false);
   const [ScreenTime, setScreenTime] = useState<number>(0);
   const [formattedScreenTime, setFormattedScreenTime] = useState<string>('');
@@ -77,17 +74,23 @@ export function useUsageStats(initialPeriod: TimePeriod = 'day') {
       
       let statsResult;
       switch (selectedPeriod) {
-        case 'day':
-          statsResult = await getTodaysScreenTime();
+        case 'day': {
+          // Use selectedDay for daily stats
+          const year = selectedDay.getFullYear();
+          const month = selectedDay.getMonth() + 1;
+          const day = selectedDay.getDate();
+          statsResult = await getTodaysScreenTime(year, month, day);
           break;
+        }
         case 'week':
           statsResult = await getWeeklyScreenTime();
           break;
-        case 'month':
-          statsResult = await getMonthlyScreenTime();
-          break;
-        default:
-          statsResult = await getTodaysScreenTime();
+        default: {
+          const year = selectedDay.getFullYear();
+          const month = selectedDay.getMonth() + 1;
+          const day = selectedDay.getDate();
+          statsResult = await getTodaysScreenTime(year, month, day);
+        }
       }
       
       const { totalScreenTimeMs, appUsage } = statsResult;
@@ -110,22 +113,24 @@ export function useUsageStats(initialPeriod: TimePeriod = 'day') {
           packageName,
           totalTimeInForeground: app.totalTimeInForeground,
           lastTimeUsed: app.lastTimeUsed,
-          appName: packageName.split('.').pop() || packageName
+          appName: packageName.split('.').pop() || packageName,
+          appLabel: app.appLabel || '',
+          iconBase64: app.iconBase64 || ''
         };
       });
       
-      // Apply filtering
+      // Apply filtering: only apps with more than 1 minute usage
       const filteredStats = stats
         .filter(app => {
-          const shouldInclude = app.totalTimeInForeground > 0 && 
+          const shouldInclude = app.totalTimeInForeground > 60000 && 
             !app.packageName.startsWith('com.android.systemui') &&
             !app.packageName.toLowerCase().includes('launcher');
-          
+
           // Always include Exizt app
           if (app.packageName.includes('exizt') || app.packageName.includes('lorenzoconte')) {
             return true;
           }
-          
+
           return shouldInclude;
         })
         .sort((a, b) => b.totalTimeInForeground - a.totalTimeInForeground);
@@ -170,6 +175,8 @@ export function useUsageStats(initialPeriod: TimePeriod = 'day') {
     selectedPeriod,
     setIsLoading,
     setSelectedPeriod,
+    selectedDay,
+    setSelectedDay,
     calculateTotalScreenTime,
     openSettings,
     setDebugMode,

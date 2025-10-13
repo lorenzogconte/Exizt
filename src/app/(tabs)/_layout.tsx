@@ -1,42 +1,56 @@
 import { Tabs } from 'expo-router';
 import React from 'react'
 import { View, Image, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import colors from '../../../assets/colors.js';
 const homeIcon = require('../../../assets/images/home.png');
 const trophyIcon = require('../../../assets/images/trophy.png');
 const profileIcon = require('../../../assets/images/profile.png');
 
-const TabIcon = ({ focused, iconName, title}: any) => {
+const TabIcon = ({ focused, iconName, title, isPadlock }: any) => {
     if (focused) {
         return (
             <View
-                className="flex flex-row w-full flex-1 items-center justify-center min-w-[140px] h-full min-h-16 mt-4 bg-darkgreen rounded-full"
+                className="flex-row items-center justify-center min-w-[140px] min-h-16 mt-4 bg-darkgreen rounded-full"
             >
-                <Image 
-                source={iconName}
-                className="w-6 h-6"
-                style={{
-                    tintColor: colors.verylightgreen,
-                }}
-                />
-                <Text className="text-secondary text-base font-semibold ml-3 text-verylightgreen">
+                {isPadlock ? (
+                    <Ionicons name="lock-closed" size={24} color={colors.verylightgreen} />
+                ) : (
+                    <Image 
+                        source={iconName}
+                        className= {
+                            iconName === homeIcon
+                            ? "ml-8 w-6 h-6"
+                            : "w-6 h-6"
+                        }
+                        style={{ tintColor: colors.verylightgreen }}
+                    />
+                )}
+                <Text 
+                    className= {
+                        iconName === profileIcon
+                        ? "text-secondary text-base font-semibold ml-2 mr-8 text-verylightgreen"
+                        :
+                        "text-secondary text-base font-semibold ml-2 text-verylightgreen"
+                    }>
                     {title}
                 </Text>
             </View>
         );
-    } 
-    else {
+    } else {
         return (
             <View
                 className="flex flex-row w-full flex-1 items-center justify-center min-w-[112px] min-h-16 mt-4 rounded-full"
             >
-                <Image 
-                    source={iconName}
-                    className="w-6 h-6"
-                    style={{
-                        tintColor: colors.lightgrey,
-                    }}
-                />
+                {isPadlock ? (
+                    <Ionicons name="lock-closed" size={24} color={colors.lightgrey} />
+                ) : (
+                    <Image 
+                        source={iconName}
+                        className="w-6 h-6"
+                        style={{ tintColor: colors.lightgrey }}
+                    />
+                )}
             </View>
         );
     }
@@ -76,6 +90,20 @@ const _Layout = () => {
                             focused={focused} 
                             iconName={homeIcon}
                             title="Home"
+                        />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="blockingcontrol"
+                options={{
+                    title: 'Controls',
+                    headerShown: false,
+                    tabBarIcon: ({ focused }) => (
+                        <TabIcon
+                            focused={focused}
+                            isPadlock={true}
+                            title="Controls"
                         />
                     ),
                 }}

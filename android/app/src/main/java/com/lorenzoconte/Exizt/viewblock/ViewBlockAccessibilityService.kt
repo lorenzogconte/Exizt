@@ -17,6 +17,15 @@ class ViewBlockAccessibilityService : AccessibilityService() {
 
     private val viewBlocker = ViewBlocker()
 
+    
+    fun pressHome() {
+        performGlobalAction(GLOBAL_ACTION_HOME)
+    }
+
+    fun pressBack() {
+        performGlobalAction(GLOBAL_ACTION_BACK)
+    }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         Log.d("ViewBlockerService", "onAccessibilityEvent called")
         if (event == null) {
@@ -40,7 +49,7 @@ class ViewBlockAccessibilityService : AccessibilityService() {
     val result = viewBlocker.doesViewNeedToBeBlocked(rootNode, packageName, this)
         if (result?.isBlocked == true) {
             Log.d("ViewBlockerService", "Blocking content for $packageName, viewId: ${result.viewId}")
-            performGlobalAction(GLOBAL_ACTION_HOME)
+            pressHome()
             val intent = Intent(this, WarningActivity::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             intent.putExtra("packageName", packageName)

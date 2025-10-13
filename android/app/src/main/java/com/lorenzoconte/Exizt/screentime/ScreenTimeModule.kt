@@ -16,19 +16,48 @@ class ScreenTimeModule(private val reactContext: ReactApplicationContext) : Reac
 
     override fun getName(): String = "ScreenTimeStats"
 
+    /**
+     * Retrieves the screen time for a specific day, or today if no date is provided.
+     * If year, month, day are null, defaults to today.
+     * @param year Optional year (Int or null)
+     * @param month Optional month (1-based, January=1) (Int or null)
+     * @param day Optional day of month (Int or null)
+     * @param promise React Native promise
+     */
     @ReactMethod
-    fun getTodaysScreenTime(promise: Promise) {
+    fun getDailyScreenTime(year: Int?, month: Int?, day: Int?, promise: Promise) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val startOfToday = Calendar.getInstance().apply {
+                val calendar = Calendar.getInstance().apply {
                     timeZone = TimeZone.getDefault()
+                    if (year != null && month != null && day != null) {
+                        set(Calendar.YEAR, year)
+                        set(Calendar.MONTH, month - 1)
+                        set(Calendar.DAY_OF_MONTH, day)
+                    }
                     set(Calendar.HOUR_OF_DAY, 0)
                     set(Calendar.MINUTE, 0)
                     set(Calendar.SECOND, 0)
                     set(Calendar.MILLISECOND, 0)
-                }.timeInMillis
+                }
+                val startOfDay = calendar.timeInMillis
 
-                val currentTime = System.currentTimeMillis()
+                // Set end of day
+                val endOfDay = if (year == null || month == null || day == null) {
+                    System.currentTimeMillis()
+                } else {
+                    Calendar.getInstance().apply {
+                        timeZone = TimeZone.getDefault()
+                        set(Calendar.YEAR, year)
+                        set(Calendar.MONTH, month - 1)
+                        set(Calendar.DAY_OF_MONTH, day)
+                        set(Calendar.HOUR_OF_DAY, 23)
+                        set(Calendar.MINUTE, 59)
+                        set(Calendar.SECOND, 59)
+                        set(Calendar.MILLISECOND, 999)
+                    }.timeInMillis
+                }
+
                 val usageStatsManager = reactContext.getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
                 val packageManager = reactContext.packageManager
                 // Get launcher apps
@@ -39,36 +68,60 @@ class ScreenTimeModule(private val reactContext: ReactApplicationContext) : Reac
 
                 val stats = usageStatsManager.queryUsageStats(
                     INTERVAL_DAILY,
-                    startOfToday,
-                    currentTime
+                    startOfDay,
+                    endOfDay
                 )
 
-                val today = Calendar.getInstance()
-                val todayYear = today.get(Calendar.YEAR)
-                val todayDayOfYear = today.get(Calendar.DAY_OF_YEAR)
-
+                // Only count usage that overlaps with the day boundaries
                 val totalTimeInMillis = stats
                     .filter { stat ->
-                        // Exclude launcher apps
                         !launcherApps.contains(stat.packageName) &&
-                                // Filter for today's stats
-                                Calendar.getInstance().apply {
-                                    timeInMillis = stat.firstTimeStamp
-                                }.let { statCalendar ->
-                                    val statYear = statCalendar.get(Calendar.YEAR)
-                                    val statDayOfYear = statCalendar.get(Calendar.DAY_OF_YEAR)
-                                    statYear == todayYear && statDayOfYear == todayDayOfYear
-                                }
+                        !stat.packageName.startsWith("com.android.systemui") &&
+                        // Only include stats where lastTimeUsed >= startOfDay and firstTimeStamp <= endOfDay
+                        stat.lastTimeUsed >= startOfDay && stat.firstTimeStamp <= endOfDay
                     }
-                    .sumOf { it.totalTimeInForeground }
+                    .sumOf { stat ->
+                        // If the stat interval is fully within the day, use totalTimeInForeground
+                        // Otherwise, estimate overlap (best effort)
+                        val usageStart = maxOf(stat.firstTimeStamp, startOfDay)
+                        val usageEnd = minOf(stat.lastTimeUsed, endOfDay)
+                        val duration = usageEnd - usageStart
+                        if (duration > 0 && duration < stat.totalTimeInForeground) duration else stat.totalTimeInForeground
+                    }
 
                 val appUsageMap = WritableNativeMap()
-                stats.filter { !launcherApps.contains(it.packageName) }
-                    .forEach { stat ->
+                stats.filter { stat ->
+                    !launcherApps.contains(stat.packageName) &&
+                    !stat.packageName.startsWith("com.android.systemui") &&
+                    stat.lastTimeUsed >= startOfDay && stat.firstTimeStamp <= endOfDay
+                }.forEach { stat ->
                     val appMap = WritableNativeMap()
-                        appMap.putDouble("totalTimeInForeground", stat.totalTimeInForeground.toDouble())
-                        appMap.putDouble("lastTimeUsed", stat.lastTimeUsed.toDouble())
-                        appUsageMap.putMap(stat.packageName, appMap)
+                    appMap.putDouble("totalTimeInForeground", stat.totalTimeInForeground.toDouble())
+                    appMap.putDouble("lastTimeUsed", stat.lastTimeUsed.toDouble())
+                    // Get app label and icon as Base64
+                    try {
+                        val appInfo = packageManager.getApplicationInfo(stat.packageName, 0)
+                        val appLabel = packageManager.getApplicationLabel(appInfo).toString()
+                        Log.d("ScreenTimeModule", "Fetched label for ${stat.packageName}: $appLabel")
+                        appMap.putString("appLabel", appLabel)
+                        val drawable = packageManager.getApplicationIcon(appInfo)
+                        val bitmap = android.graphics.Bitmap.createBitmap(
+                            drawable.intrinsicWidth,
+                            drawable.intrinsicHeight,
+                            android.graphics.Bitmap.Config.ARGB_8888
+                        )
+                        val canvas = android.graphics.Canvas(bitmap)
+                        drawable.setBounds(0, 0, canvas.width, canvas.height)
+                        drawable.draw(canvas)
+                        val outputStream = java.io.ByteArrayOutputStream()
+                        bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, outputStream)
+                        val iconBase64 = android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.NO_WRAP)
+                        appMap.putString("iconBase64", iconBase64)
+                    } catch (e: Exception) {
+                        appMap.putString("iconBase64", "")
+                        appMap.putString("appLabel", stat.packageName)
+                    }
+                    appUsageMap.putMap(stat.packageName, appMap)
                 }
                 // Create result object
                 val result = WritableNativeMap()
@@ -115,70 +168,6 @@ class ScreenTimeModule(private val reactContext: ReactApplicationContext) : Reac
                 val stats = usageStatsManager.queryUsageStats(
                     INTERVAL_WEEKLY,
                     startOfWeek,
-                    currentTime
-                )
-
-                val totalTimeInMillis = stats
-                    .filter { stat ->
-                        // Exclude launcher apps and system UI
-                        !launcherApps.contains(stat.packageName) &&
-                        !stat.packageName.startsWith("com.android.systemui")
-                    }
-                    .sumOf { it.totalTimeInForeground }
-
-                // Create app usage data map
-                val appUsageMap = WritableNativeMap()
-                stats.filter { !launcherApps.contains(it.packageName) }
-                    .forEach { stat ->
-                    val appMap = WritableNativeMap()
-                        appMap.putDouble("totalTimeInForeground", stat.totalTimeInForeground.toDouble())
-                        appMap.putDouble("lastTimeUsed", stat.lastTimeUsed.toDouble())
-                        appUsageMap.putMap(stat.packageName, appMap)
-                }
-
-                // Create result object
-                val result = WritableNativeMap()
-                result.putDouble("totalScreenTimeMs", totalTimeInMillis.toDouble())
-                result.putMap("appUsage", appUsageMap)
-
-                withContext(Dispatchers.Main) {
-                    promise.resolve(result)
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    promise.reject("SCREEN_TIME_ERROR", e.message, e)
-                }
-            }
-        }
-    }
-
-    @ReactMethod
-    fun getMonthlyScreenTime(promise: Promise) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                // Calculate start of month (first day of current month)
-                val startOfMonth = Calendar.getInstance().apply {
-                    timeZone = TimeZone.getDefault()
-                    set(Calendar.HOUR_OF_DAY, 0)
-                    set(Calendar.MINUTE, 0)
-                    set(Calendar.SECOND, 0)
-                    set(Calendar.MILLISECOND, 0)
-                    set(Calendar.DAY_OF_MONTH, 1)
-                }.timeInMillis
-
-                val currentTime = System.currentTimeMillis()
-                val usageStatsManager = reactContext.getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
-                val packageManager = reactContext.packageManager
-
-                // Get launcher apps
-                val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-                val launcherApps = packageManager.queryIntentActivities(launcherIntent, 0)
-                    .map { it.activityInfo.packageName }
-                    .toSet()
-
-                val stats = usageStatsManager.queryUsageStats(
-                    INTERVAL_MONTHLY,
-                    startOfMonth,
                     currentTime
                 )
 

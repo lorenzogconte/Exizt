@@ -283,7 +283,7 @@ class AppBlocker {
         }
     }
 
-    private fun drawableToBitmap(drawable: Drawable): Bitmap {
+    public fun drawableToBitmap(drawable: Drawable): Bitmap {
         if (drawable is BitmapDrawable) {
             return drawable.bitmap
         }
@@ -298,7 +298,7 @@ class AppBlocker {
         return bitmap
     }
 
-    private fun bitmapToBase64(bitmap: Bitmap): String {
+    public fun bitmapToBase64(bitmap: Bitmap): String {
         val byteArrayOutputStream = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream)
         val byteArray = byteArrayOutputStream.toByteArray()

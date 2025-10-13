@@ -193,10 +193,6 @@ const finishInvitations = () => {
         </View>
       </View>
       
-      <View className="flex-row items-center mt-3">
-        <Text className="text-gray-500 text-xs">Created by </Text>
-        <Text className="text-verylightgreen text-xs">@{item.creator.username}</Text>
-      </View>
     </TouchableOpacity>
   );
 
