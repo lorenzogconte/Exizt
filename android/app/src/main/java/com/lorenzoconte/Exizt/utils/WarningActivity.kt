@@ -45,6 +45,7 @@ class WarningActivity : AppCompatActivity() {
         cancelBtn.setOnClickListener {
             finish()
         }
+        Log.d(TAG, "WarningActivity UI set up")
     }
 
     private fun launchPackage(pkg: String) {
@@ -62,6 +63,7 @@ class WarningActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        Log.d(TAG, "onDestroy called")
         super.onDestroy()
         proceedTimer?.onFinish()
         dialog?.dismiss()

@@ -29,7 +29,6 @@ export default function Index() {
   } = useAppBlock();
   
   const [fontsLoaded, setFontsLoaded] = useState(false);
-  // selectedDay and setSelectedDay now come from useUsageStats
   const [selectedWeekStart, setSelectedWeekStart] = useState(() => {
     const now = new Date();
     const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1; // Monday=0, Sunday=6
@@ -101,7 +100,6 @@ export default function Index() {
     }).then(() => setFontsLoaded(true));
   }, []);
 
-
   useEffect(() => {
     const checkAllPermissions = async () => {
       const hasAllPermissions = await checkPermission('all');
@@ -115,7 +113,7 @@ export default function Index() {
   if (!fontsLoaded) {
     return null; // Or a loading spinner
   }
-  
+
   // Time period selector component (kept inline since we're not extracting components)
   const TimePeriodSelector = () => (
     <View className="flex-row justify-center mb-6 bg-black rounded-full p-1">
@@ -127,7 +125,6 @@ export default function Index() {
           Day
         </Text>
       </TouchableOpacity>
-      
       <TouchableOpacity
         className={`px-4 py-2 rounded-full ${selectedPeriod === 'week' ? 'bg-lightgrey' : 'bg-transparent'}`}
         onPress={() => setSelectedPeriod('week')}
@@ -136,12 +133,11 @@ export default function Index() {
           Week
         </Text>
       </TouchableOpacity>
-      
     </View>
   );
 
   return (
-    <View className="flex-1 bg-black px-4 py-6">
+  <ScrollView className="flex-1 bg-black px-4 py-6" contentContainerStyle={{ flexGrow: 1, paddingBottom: 96 }}>
       <View className="flex-row justify-between items-center mb-4">
         <View>
           <Text className="font-montserrat_extrabold text-lightgreen text-3xl">Screen Time</Text>
@@ -286,43 +282,41 @@ export default function Index() {
             </View>
           </View>
           <Text className="text-white text-xl font-montserrat_black mb-4">Top Apps</Text>
-          <ScrollView className="flex-1">
-            {usageStats.length === 0 ? null : usageStats.slice(0, 10).map((app, index) => (
-              <View key={app.packageName} className="bg-gray mb-3 rounded-lg p-4">
-                <View className="flex-row justify-between items-center">
-                  <View className="flex-row items-center">
-                    {/* App icon */}
-                    {app.iconBase64 ? (
-                      <Image
-                        source={{ uri: `data:image/png;base64,${app.iconBase64}` }}
-                        style={{ width: 32, height: 32, borderRadius: 8, marginRight: 12 }}
-                        resizeMode="contain"
-                      />
-                    ) : null}
-                    <View>
-                      <Text className="text-lightgrey font-montserrat_light">
-                        {app.appLabel || app.appName}
-                      </Text>
-                    </View>
+          {usageStats.length === 0 ? null : usageStats.slice(0, 10).map((app, index) => (
+            <View key={app.packageName} className="bg-gray mb-3 rounded-lg p-4">
+              <View className="flex-row justify-between items-center">
+                <View className="flex-row items-center">
+                  {/* App icon */}
+                  {app.iconBase64 ? (
+                    <Image
+                      source={{ uri: `data:image/png;base64,${app.iconBase64}` }}
+                      style={{ width: 32, height: 32, borderRadius: 8, marginRight: 12 }}
+                      resizeMode="contain"
+                    />
+                  ) : null}
+                  <View>
+                    <Text className="text-lightgrey font-montserrat_light">
+                      {app.appLabel || app.appName}
+                    </Text>
                   </View>
-                  <Text className="text-lightgrey font-montserrat_medium">
-                    {formatUsageTime(app.totalTimeInForeground)}
-                  </Text>
                 </View>
-                {/* Usage bar */}
-                <View className="h-2 bg-black rounded-full mt-3">
-                  <View 
-                    className="h-2 bg-lightgreen rounded-full" 
-                    style={{ 
-                      width: `${(app.totalTimeInForeground / calculateTotalScreenTime()) * 100}%` 
-                    }} 
-                  />
-                </View>
+                <Text className="text-lightgrey font-montserrat_medium">
+                  {formatUsageTime(app.totalTimeInForeground)}
+                </Text>
               </View>
-            ))}
-          </ScrollView>
+              {/* Usage bar */}
+              <View className="h-2 bg-black rounded-full mt-3">
+                <View 
+                  className="h-2 bg-lightgreen rounded-full" 
+                  style={{ 
+                    width: `${(app.totalTimeInForeground / calculateTotalScreenTime()) * 100}%` 
+                  }} 
+                />
+              </View>
+            </View>
+          ))}
         </>
       )}
-    </View>
+    </ScrollView>
   );
 }

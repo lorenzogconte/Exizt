@@ -50,9 +50,12 @@ class ViewBlockAccessibilityService : AccessibilityService() {
         if (result?.isBlocked == true) {
             Log.d("ViewBlockerService", "Blocking content for $packageName, viewId: ${result.viewId}")
             pressHome()
+            // Add a short delay to allow home action to complete
+            Thread.sleep(50)
             val intent = Intent(this, WarningActivity::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             intent.putExtra("packageName", packageName)
+            Log.d("ViewBlockerService", "Starting WarningActivity")
             startActivity(intent)
         } else {
             Log.d("ViewBlockerService", "No block needed for $packageName")

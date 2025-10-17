@@ -3,8 +3,7 @@ package com.lorenzoconte.Exizt.utils
 import android.content.Context
 import androidx.work.*
 import java.util.concurrent.TimeUnit  // Keep only one import for TimeUnit
-import android.app.usage.UsageStatsManager
-import android.content.Context.USAGE_STATS_SERVICE
+import com.lorenzoconte.Exizt.screentime.ScreenTimeModule
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.*
@@ -19,99 +18,55 @@ class ScreenTimeUploadWorker(context: Context, params: WorkerParameters) :
     CoroutineWorker(context, params) {
 
     companion object {
-        private const val API_URL = "http://172.20.10.2:8000"
-        // Schedule daily screen time upload at midnight
-        fun scheduleDaily(context: Context) {
-            // Calculate time until midnight
-            val calendar = Calendar.getInstance()
-            val now = calendar.timeInMillis
+        private const val API_URL = "https://serverexizt.fly.dev"
 
-            val targetHour = 23
-            val targetMinute = 59
-            calendar.apply {
-                set(Calendar.HOUR_OF_DAY, targetHour)
-                set(Calendar.MINUTE, targetMinute)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-
-                if (timeInMillis <= now) {
-                    add(Calendar.DAY_OF_YEAR, 1)
-                }
-            }
-            val midnight = calendar.timeInMillis
-            val initialDelay = midnight - now
-
-            val uploadWorkRequest = OneTimeWorkRequestBuilder<ScreenTimeUploadWorker>()
-                .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
-                .setConstraints(
-                    Constraints.Builder()
-                        .setRequiredNetworkType(NetworkType.CONNECTED)
-                        .build()
-                )
+        fun scheduleDailyUpload(context: Context) {
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .setRequiresBatteryNotLow(true)
                 .build()
 
-            WorkManager.getInstance(context)
-                .enqueueUniqueWork(
-                    "screen_time_upload",
-                    ExistingWorkPolicy.REPLACE,
-                    uploadWorkRequest
-                )
-        }
-    }
+            val initialDelay = TimeUnit.MINUTES.toMillis(10)
+            val uploadWorkRequest = PeriodicWorkRequestBuilder<ScreenTimeUploadWorker>(2, TimeUnit.MINUTES)
+                .setConstraints(constraints)
+                .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
+                .build()
 
-    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        try {
-            // Get today's screen time
-            val startOfDay = Calendar.getInstance().apply {
-                timeZone = TimeZone.getDefault()
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                "screen_time_upload",
+                ExistingPeriodicWorkPolicy.UPDATE,
+                uploadWorkRequest
+            )
+        }
+
+        // Calculate delay until next midnight
+        fun calculateInitialDelay(): Long {
+            val now = Calendar.getInstance()
+            val nextMidnight = Calendar.getInstance().apply {
+                add(Calendar.DAY_OF_YEAR, 1)
                 set(Calendar.HOUR_OF_DAY, 0)
                 set(Calendar.MINUTE, 0)
                 set(Calendar.SECOND, 0)
                 set(Calendar.MILLISECOND, 0)
-            }.timeInMillis
+            }
+            return nextMidnight.timeInMillis - now.timeInMillis
+        }
+    }
 
-            val endOfDay = Calendar.getInstance().apply {
-                timeZone = TimeZone.getDefault()
-                set(Calendar.HOUR_OF_DAY, 23)
-                set(Calendar.MINUTE, 59)
-                set(Calendar.SECOND, 59)
-                set(Calendar.MILLISECOND, 999)
-            }.timeInMillis
+    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
 
-            val usageStatsManager = applicationContext.getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
-            
-            // Get launcher apps to exclude
-            val launcherIntent = android.content.Intent(android.content.Intent.ACTION_MAIN)
-                .addCategory(android.content.Intent.CATEGORY_HOME)
-            val launcherApps = applicationContext.packageManager.queryIntentActivities(launcherIntent, 0)
-                .map { it.activityInfo.packageName }
-                .toSet()
+        try {
+            android.util.Log.i("ScreenTimeUpload", "Starting screen time upload...")
+            // Use ScreenTimeModule to get daily screen time
+            val (totalTimeInMillis, _) = ScreenTimeModule.getDailyScreenTimeInternal(applicationContext)
 
-            val stats = usageStatsManager.queryUsageStats(
-                UsageStatsManager.INTERVAL_DAILY,
-                startOfDay,
-                endOfDay
-            )
-
-            val totalTimeInMillis = stats
-                .filter { stat ->
-                    !launcherApps.contains(stat.packageName) &&
-                    !stat.packageName.startsWith("com.android.systemui") &&
-                    !stat.packageName.contains("launcher", ignoreCase = true) &&
-                    !stat.packageName.contains("quicksearchbox", ignoreCase = true) &&
-                    !stat.packageName.contains("permissioncontroller", ignoreCase = true) &&
-                    !stat.packageName.contains("inputmethod", ignoreCase = true) &&
-                    stat.totalTimeInForeground > 0
-                }
-                .sumOf { it.totalTimeInForeground }
-
-            // Get auth token from shared preferences
+            // ...existing code for auth token and upload...
             val sharedPrefs = applicationContext.getSharedPreferences("ExiztPrefs", Context.MODE_PRIVATE)
             val token = sharedPrefs.getString("authToken", null)
-            
+
             if (token == null) {
-                // Reschedule for tomorrow and return failure
-                scheduleDaily(applicationContext)
+                // No token, fail
+                android.util.Log.e("ScreenTimeUpload", "No auth token found, upload aborted.")
                 return@withContext Result.failure()
             }
 
@@ -124,27 +79,22 @@ class ScreenTimeUploadWorker(context: Context, params: WorkerParameters) :
 
             val requestBody = json.toString().toRequestBody("application/json".toMediaType())
             val request = Request.Builder()
-                .url("$API_URL/screentime/upload/")
+                .url("$API_URL/screentime/update/")
                 .post(requestBody)
                 .header("Authorization", "Token $token")
                 .build()
 
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    // Log error but still schedule for tomorrow
                     android.util.Log.e("ScreenTimeUpload", "Failed to upload: ${response.code}")
-                    scheduleDaily(applicationContext)
                     return@withContext Result.failure()
                 }
             }
 
-            // Schedule next day's upload
-            scheduleDaily(applicationContext)
+            android.util.Log.i("ScreenTimeUpload", "Screen time upload successful.")
             return@withContext Result.success()
         } catch (e: Exception) {
             android.util.Log.e("ScreenTimeUpload", "Error in upload worker: ${e.message}")
-            // Schedule again for tomorrow even if there was an error
-            scheduleDaily(applicationContext)
             return@withContext Result.failure()
         }
     }

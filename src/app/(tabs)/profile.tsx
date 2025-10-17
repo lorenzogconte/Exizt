@@ -163,88 +163,71 @@ export default function ProfileScreen() {
                     {isEditing ? (
                         // EDIT MODE UI
                         <View className="mb-5 items-center w-full">
-                            {/* Avatar Preview */}
+                            {/* Avatar Preview with pencil overlay and click-to-edit */}
                             <View className="mb-4">
-                                {editAvatar ? (
-                                    <Image 
-                                        source={{ uri: editAvatar }} 
-                                        className="w-24 h-24 rounded-full" 
-                                    />
-                                ) : (
-                                    <View className="w-24 h-24 rounded-full bg-purple-700 justify-center items-center">
-                                        <Text className="text-white text-4xl font-bold">
-                                            {username && username.charAt(0).toUpperCase()}
-                                        </Text>
+                                <Pressable
+                                    onPress={async () => {
+                                        // Request permissions
+                                        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                                        if (status !== 'granted') {
+                                            Alert.alert('Permission Required', 'Please allow access to your photo library to select an avatar');
+                                            return;
+                                        }
+                                        // Launch image picker
+                                        const result = await ImagePicker.launchImageLibraryAsync({
+                                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                            allowsEditing: true,
+                                            aspect: [1, 1],
+                                            quality: 0.7,
+                                        });
+                                        if (!result.canceled && result.assets && result.assets.length > 0) {
+                                            const selectedImage = result.assets[0];
+                                            setEditAvatar(selectedImage.uri);
+                                            setImageFile(selectedImage);
+                                        }
+                                    }}
+                                    style={{ alignItems: 'center', justifyContent: 'center' }}
+                                >
+                                    <View style={{ position: 'relative' }}>
+                                        {editAvatar ? (
+                                            <Image 
+                                                source={{ uri: editAvatar }} 
+                                                className="w-24 h-24 rounded-full" 
+                                            />
+                                        ) : (
+                                            <View className="w-24 h-24 rounded-full bg-purple-700 justify-center items-center">
+                                                <Text className="text-white text-4xl font-bold">
+                                                    {username && username.charAt(0).toUpperCase()}
+                                                </Text>
+                                            </View>
+                                        )}
+                                        {/* Pencil icon overlay - bottom right, slightly overlapping */}
+                                        <View style={{ position: 'absolute', bottom: -6, right: -6, backgroundColor: "#AAFA92", borderRadius: 16, padding: 4, elevation: 2 }}>
+                                            <Ionicons name="pencil" size={20} color="#000" />
+                                        </View>
                                     </View>
-                                )}
+                                </Pressable>
                             </View>
                             
                             {/* Edit Form Fields */}
                             <View className="w-full justify-center content-center">
-                                    <View className="flex-row items-center mb-2">
-                                        <Text className="text-white mr-2">Name:</Text>
-                                        <TextInput
-                                            value={editName}
-                                            onChangeText={setEditName}
-                                            placeholder="Your name"
-                                            className="flex-1 bg-gray-800 text-white px-3 py-2 rounded-md"
-                                            placeholderTextColor="#666"
-                                        />
-                                    </View>
-                                
-                            <View>
-                                <Text className="text-white mb-1">Profile Picture:</Text>
-                                <View className="flex-row items-center">
-                                    <View className="mr-4">
-                                    {editAvatar ? (
-                                        <Image 
-                                        source={{ uri: editAvatar }} 
-                                        className="w-16 h-16 rounded-full" 
-                                        />
-                                    ) : (
-                                        <View className="w-16 h-16 rounded-full bg-purple-700 justify-center items-center">
-                                        <Text className="text-white text-2xl font-bold">
-                                            {username && username.charAt(0).toUpperCase()}
-                                        </Text>
+                                    <View className="flex-col items-right mb-2 mr-4">
+                                        <Text className="text-white text-lg">Name:</Text>
+                                        <View className="border-b border-lightgrey">
+                                            <TextInput
+                                                value={editName}
+                                                onChangeText={setEditName}
+                                                placeholder="Your name"
+                                                className="flex-1 bg-gray-800 text-white px-3 py-2 rounded-md text-xl"
+                                                placeholderTextColor="#666"
+                                            />
                                         </View>
-                                    )}
                                     </View>
-                                    <TouchableOpacity 
-                                    className="bg-gray-700 px-4 py-2 rounded-md"
-                                    onPress={async () => {
-                                        // Request permissions
-                                        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                                        
-                                        if (status !== 'granted') {
-                                        Alert.alert('Permission Required', 'Please allow access to your photo library to select an avatar');
-                                        return;
-                                        }
-                                        
-                                        // Launch image picker
-                                        const result = await ImagePicker.launchImageLibraryAsync({
-                                        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                                        allowsEditing: true,
-                                        aspect: [1, 1],
-                                        quality: 0.7,
-                                        });
-                                        
-                                        if (!result.canceled && result.assets && result.assets.length > 0) {
-                                        const selectedImage = result.assets[0];
-                                        setEditAvatar(selectedImage.uri);
-                                        // Add this to your useProfile hook
-                                        setImageFile(selectedImage);
-                                        }
-                                    }}
-                                    >
-                                    <Text className="text-white">Select Image</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
                                 
                                 {/* Action Buttons */}
                                 <View className="flex-row justify-between mt-2">
                                     <TouchableOpacity
-                                        className="bg-gray-600 px-6 py-2 rounded-full"
+                                        className="bg-gray-600 px-14 py-2 rounded-full border border-lightgrey"
                                         onPress={cancelEditing}
                                         disabled={isUpdating}
                                     >
@@ -252,7 +235,7 @@ export default function ProfileScreen() {
                                     </TouchableOpacity>
                                     
                                     <TouchableOpacity
-                                        className="bg-verylightgreen px-6 py-2 rounded-full"
+                                        className="bg-verylightgreen px-8 py-2 rounded-full"
                                         onPress={saveProfileChanges}
                                         disabled={isUpdating}
                                     >
@@ -320,13 +303,15 @@ export default function ProfileScreen() {
                         </View>
                     )}
                     
-                    {/* Logout button */}
-                    <TouchableOpacity
-                        className="bg-red-500 px-8 py-3 rounded-full mt-8 bottom-1" 
-                        onPress={handleLogout}
-                    >
-                        <Text className="text-white font-bold text-center">Logout</Text>
-                    </TouchableOpacity>
+                    {/* Logout button - only show when not editing */}
+                    {!isEditing && (
+                        <TouchableOpacity
+                            className="bg-red-500 px-8 py-3 rounded-full mt-8 bottom-1" 
+                            onPress={handleLogout}
+                        >
+                            <Text className="text-white font-bold text-center">Logout</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
 
                 {/* Friends Modal */}

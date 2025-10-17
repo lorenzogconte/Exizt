@@ -48,7 +48,7 @@ export default function AppGroupLimits() {
 							<View className="bg-gray-800 p-3 rounded-xl mb-3">
 								<Text className="text-white font-bold">{item.name}</Text>
 								<Text className="text-lightgrey">Apps: {item.apps.join(', ')}</Text>
-								<Text className="text-green">Limit: {item.limit} min</Text>
+								<Text className="text-green">Limit: {item.timeLimit} min</Text>
 							</View>
 						)}
 					/>

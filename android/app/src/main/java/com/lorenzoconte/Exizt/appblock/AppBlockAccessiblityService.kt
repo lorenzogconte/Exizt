@@ -62,10 +62,6 @@ class AppBlockAccessibilityService : AccessibilityService() {
         val prefs = getSharedPreferences("AppBlockPrefs", Context.MODE_PRIVATE)
         val focusModeActive = prefs.getBoolean("focusModeActive", false)
         Log.d("focusModeActive", focusModeActive.toString())
-        if (!focusModeActive) {
-            return false
-        }
-
         val groupsJson = prefs.getString("appGroups", "[]")
         val groupsArr = JSONArray(groupsJson)
         var shouldBlockForGroup = false

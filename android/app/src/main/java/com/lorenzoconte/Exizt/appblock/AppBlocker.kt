@@ -39,6 +39,29 @@ const val TAG = "AppBlocker"
 const val OP_BACKGROUND_START_ACTIVITY = 10021
 
 class AppBlocker {
+    companion object {
+        fun drawableToBitmap(drawable: Drawable): Bitmap {
+            if (drawable is BitmapDrawable) {
+                return drawable.bitmap
+            }
+            val bitmap = if (drawable.intrinsicWidth <= 0 || drawable.intrinsicHeight <= 0) {
+                Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+            } else {
+                Bitmap.createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
+            }
+            val canvas = Canvas(bitmap)
+            drawable.setBounds(0, 0, canvas.width, canvas.height)
+            drawable.draw(canvas)
+            return bitmap
+        }
+
+        fun bitmapToBase64(bitmap: Bitmap): String {
+            val byteArrayOutputStream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream)
+            val byteArray = byteArrayOutputStream.toByteArray()
+            return android.util.Base64.encodeToString(byteArray, android.util.Base64.DEFAULT)
+        }
+    }
 
     var blockedAppsList = hashSetOf("")
 
@@ -83,7 +106,7 @@ class AppBlocker {
             } else if (mode == "blocking") {
                 enabled = Settings.canDrawOverlays(reactContext)
                 Log.d(TAG, "Overlay permission granted: $enabled")
-                if ("xiaomi".equals(Build.MANUFACTURER.toLowerCase(Locale.ROOT))) {
+                if ("xiaomi".equals(Build.MANUFACTURER.lowercase(Locale.ROOT))) {
                     val mgr = reactContext.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
                     try {
                         Log.d(TAG, "Attempting to get checkOpNoThrow method via reflection")
@@ -125,7 +148,7 @@ class AppBlocker {
             Log.d(TAG, "Opened accessibility settings")
         }
         if (mode == "blocking") {
-            if ("xiaomi".equals(Build.MANUFACTURER.toLowerCase(Locale.ROOT))) {
+            if ("xiaomi".equals(Build.MANUFACTURER.lowercase(Locale.ROOT))) {
                 Toast.makeText(reactContext, "Please enable 'Open new windows while running in the background' and 'Display pop-up windows while running in the background'", Toast.LENGTH_LONG).show()
                 val intent = Intent("miui.intent.action.APP_PERM_EDITOR")
                 intent.setClassName("com.miui.securitycenter",
@@ -283,27 +306,6 @@ class AppBlocker {
         }
     }
 
-    public fun drawableToBitmap(drawable: Drawable): Bitmap {
-        if (drawable is BitmapDrawable) {
-            return drawable.bitmap
-        }
-        val bitmap = if (drawable.intrinsicWidth <= 0 || drawable.intrinsicHeight <= 0) {
-            Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
-        } else {
-            Bitmap.createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
-        }
-        val canvas = Canvas(bitmap)
-        drawable.setBounds(0, 0, canvas.width, canvas.height)
-        drawable.draw(canvas)
-        return bitmap
-    }
-
-    public fun bitmapToBase64(bitmap: Bitmap): String {
-        val byteArrayOutputStream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream)
-        val byteArray = byteArrayOutputStream.toByteArray()
-        return android.util.Base64.encodeToString(byteArray, android.util.Base64.DEFAULT)
-    }
 
     data class AppGroup(
         val name: String,
@@ -330,7 +332,7 @@ class AppBlocker {
             }
             val appsList = mutableListOf<String>()
             for (i in 0 until apps.size()) {
-                appsList.add(apps.getString(i) ?: "")
+                appsList.add(apps.getString(i))
             }
             Log.d(TAG, "Apps list for new group: $appsList")
             val newGroup = org.json.JSONObject()
