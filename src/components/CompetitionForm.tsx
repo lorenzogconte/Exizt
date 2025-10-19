@@ -30,6 +30,7 @@ interface CompetitionFormProps {
   inviteParticipant?: (username: string) => Promise<boolean>;
   removeParticipant?: (participantId: number) => Promise<boolean>;
   isCreator?: boolean;
+  competitionStatus?: string;
 }
 
 export const CompetitionForm: React.FC<CompetitionFormProps> = ({
@@ -47,7 +48,8 @@ export const CompetitionForm: React.FC<CompetitionFormProps> = ({
   participants = [],
   inviteParticipant = async () => false,
   removeParticipant = async () => false,
-  isCreator = false
+  isCreator = false,
+  competitionStatus,
 }) => {
   // State for participant management
   const [newParticipantUsername, setNewParticipantUsername] = useState('');
@@ -253,8 +255,8 @@ export const CompetitionForm: React.FC<CompetitionFormProps> = ({
                 <Text className="text-gray-500 italic mb-3">No participants yet</Text>
               )}
               
-              {/* Invite New Participant (if user is creator) */}
-              {isCreator && (
+              {/* Invite New Participant (if user is creator and competition is upcoming) */}
+              {isCreator && competitionStatus === 'upcoming' && (
                 <>
                   <Text className="text-lightgrey mt-4 mb-2">Invite new participant</Text>
                   <View className="flex-row items-center mb-2">

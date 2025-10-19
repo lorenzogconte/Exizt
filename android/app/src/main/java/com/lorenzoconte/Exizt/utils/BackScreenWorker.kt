@@ -18,6 +18,7 @@ class ScreenTimeUploadWorker(context: Context, params: WorkerParameters) :
     CoroutineWorker(context, params) {
 
     companion object {
+        // Use HTTP for local development to avoid TLS errors
         private const val API_URL = "https://serverexizt.fly.dev"
 
         fun scheduleDailyUpload(context: Context) {
@@ -26,8 +27,8 @@ class ScreenTimeUploadWorker(context: Context, params: WorkerParameters) :
                 .setRequiresBatteryNotLow(true)
                 .build()
 
-            val initialDelay = TimeUnit.MINUTES.toMillis(10)
-            val uploadWorkRequest = PeriodicWorkRequestBuilder<ScreenTimeUploadWorker>(2, TimeUnit.MINUTES)
+            val initialDelay = calculateInitialDelay()
+            val uploadWorkRequest = PeriodicWorkRequestBuilder<ScreenTimeUploadWorker>(1, TimeUnit.DAYS)
                 .setConstraints(constraints)
                 .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
                 .build()
@@ -54,11 +55,16 @@ class ScreenTimeUploadWorker(context: Context, params: WorkerParameters) :
     }
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-
         try {
             android.util.Log.i("ScreenTimeUpload", "Starting screen time upload...")
-            // Use ScreenTimeModule to get daily screen time
-            val (totalTimeInMillis, _) = ScreenTimeModule.getDailyScreenTimeInternal(applicationContext)
+            // Calculate yesterday's date
+            val cal = Calendar.getInstance()
+            cal.add(Calendar.DAY_OF_YEAR, -1)
+            val year = cal.get(Calendar.YEAR)
+            val month = cal.get(Calendar.MONTH) + 1 // Calendar.MONTH is 0-based
+            val day = cal.get(Calendar.DAY_OF_MONTH)
+            // Use ScreenTimeModule to get yesterday's screen time
+            val (totalTimeInMillis, _) = ScreenTimeModule.getDailyScreenTimeInternal(applicationContext, year, month, day)
 
             // ...existing code for auth token and upload...
             val sharedPrefs = applicationContext.getSharedPreferences("ExiztPrefs", Context.MODE_PRIVATE)
@@ -72,26 +78,27 @@ class ScreenTimeUploadWorker(context: Context, params: WorkerParameters) :
 
             // Upload to backend
             val client = OkHttpClient()
+            val screenTimeMinutes = Math.round(totalTimeInMillis / 1000.0 / 60.0).toInt()
+            android.util.Log.i("ScreenTimeUpload", "Total screen time minutes: $screenTimeMinutes")
             val json = JSONObject().apply {
-                put("total_screen_time_ms", totalTimeInMillis)
-                put("date", SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()))
+                put("screen_time_minutes", screenTimeMinutes)
+                put("date", SimpleDateFormat("yyyy-MM-dd", Locale.US).format(cal.time))
             }
 
             val requestBody = json.toString().toRequestBody("application/json".toMediaType())
             val request = Request.Builder()
-                .url("$API_URL/screentime/update/")
+                .url("$API_URL/competitions/screen-time/update/")
                 .post(requestBody)
                 .header("Authorization", "Token $token")
                 .build()
 
             client.newCall(request).execute().use { response ->
+                val responseBody = response.body?.string()
+                android.util.Log.i("ScreenTimeUpload", "Response: $responseBody")
                 if (!response.isSuccessful) {
-                    android.util.Log.e("ScreenTimeUpload", "Failed to upload: ${response.code}")
                     return@withContext Result.failure()
                 }
             }
-
-            android.util.Log.i("ScreenTimeUpload", "Screen time upload successful.")
             return@withContext Result.success()
         } catch (e: Exception) {
             android.util.Log.e("ScreenTimeUpload", "Error in upload worker: ${e.message}")

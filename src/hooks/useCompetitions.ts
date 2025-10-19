@@ -27,8 +27,19 @@ export const useCompetitions = () => {
           'Authorization': `Token ${token}`
         }
       });
-      console.log("Response given:", response)
-      setCompetitions(response.data);
+      // Map creator to a flat user object
+      const competitions = response.data.map((comp: any) => ({
+        ...comp,
+        creator: {
+          id: comp.creator.user.id,
+          username: comp.creator.user.username,
+          email: comp.creator.user.email,
+          avatar: comp.creator.avatar,
+          name: comp.creator.name
+        },
+      }));
+      console.log("Competition 1:", competitions);
+      setCompetitions(competitions);
       setError(null);
     } catch (err : any) {
       if (err.response) {
@@ -171,12 +182,11 @@ export const useCompetitions = () => {
   const inviteToCompetition = async (competitionId: number, username: string) => {
     try {
       const token = await AsyncStorage.getItem('authToken');
-      
       if (!token) {
         Alert.alert('Error', 'You need to be logged in to send invitations');
         return false;
       }
-      
+      console.log('DEBUG inviteToCompetition payload:', { competition_id: competitionId, username });
       const response = await axios.post(
         `${API_URL}/competitions/invitations/send/`, 
         { 
@@ -190,20 +200,19 @@ export const useCompetitions = () => {
           }
         }
       );
-      
+      console.log("Invitation response:", response.data);
       return response.status === 201;
     } catch (err) {
       console.error('Error inviting to competition:', err);
-
       if (axios.isAxiosError(err) && err.response) {
         const errorMessage = err.response.data.message || 
                             err.response.data.error || 
                             'Failed to send invitation';
+        console.log('DEBUG inviteToCompetition error response:', err.response.data);
         Alert.alert('Error', errorMessage);
       } else {
         Alert.alert('Error', 'Failed to send invitation');
       }
-      
       return false;
     }
   };
@@ -253,35 +262,74 @@ export const useCompetitions = () => {
         return null;
       }
       
+
       const response = await axios.get(`${API_URL}/competitions/${competitionId}/`, {
         headers: {
           'Authorization': `Token ${token}`
         }
       });
+      console.log("Competition details response:", response.data);
 
       const userId = await AsyncStorage.getItem('userId');
+
       let isCreator = false;
-      
-      if (userId && response.data.creator && response.data.creator.id) {
-        isCreator = response.data.creator.id.toString() === userId;
+      let creatorId = undefined;
+      if (response.data.creator) {
+        if (response.data.creator.user && response.data.creator.user.id !== undefined) {
+          creatorId = response.data.creator.user.id;
+        } else if (response.data.creator.id !== undefined) {
+          creatorId = response.data.creator.id;
+        }
+      }
+      if (userId && creatorId !== undefined) {
+        isCreator = creatorId.toString() === userId;
+        console.log('DEBUG [useCompetitions] userId:', userId, 'type:', typeof userId, 'creatorId:', creatorId, 'type:', typeof creatorId, 'isCreator:', isCreator);
       }
 
       // Use the leaderboard data directly from the backend
       const participants = response.data.leaderboard || [];
 
-      const participantsWithRanks = participants.map((participant : CompetitionParticipant, index : number) => ({
+      const participantsWithRanks = participants.map((participant : any, index : number) => ({
         ...participant,
-        rank: participant.rank || index + 1
+        user: participant.user && participant.user.user
+          ? {
+              id: participant.user.user.id,
+              username: participant.user.user.username,
+              email: participant.user.user.email,
+              avatar: participant.user.avatar,
+              name: participant.user.name
+            }
+          : {
+              username: participant.username || "Unknown",
+              id: participant.user_id || participant.id,
+              avatar: participant.avatar || null,
+              name: participant.name || ""
+            },
+        rank: participant.rank || index + 1,
+        average_daily_use: participant.average_daily_usage ?? participant.average_daily_use ?? null
       }));
 
-      return {
-        competition: response.data,
-        participants: participantsWithRanks,
-        isCreator: isCreator,
-        // Include the summary stats from the backend
-        totalParticipants: response.data.total_participants || participants.length,
-        rankedParticipants: response.data.ranked_participants || 0
-      };
+        // Flatten creator object for consistency
+        let competitionData = { ...response.data };
+        if (competitionData.creator && competitionData.creator.user) {
+          competitionData.creator = {
+            id: competitionData.creator.user.id,
+            username: competitionData.creator.user.username,
+            email: competitionData.creator.user.email,
+            avatar: competitionData.creator.avatar,
+            name: competitionData.creator.name
+          };
+        }
+        // Map total_participants to participant_count for frontend compatibility
+        competitionData.participant_count = competitionData.total_participants;
+
+        return {
+          competition: competitionData,
+          participants: participantsWithRanks,
+          isCreator: isCreator,
+          totalParticipants: competitionData.total_participants || participants.length,
+          rankedParticipants: competitionData.ranked_participants || 0
+        };
     } catch (err) {
       console.error('Error fetching competition details:', err);
       
@@ -335,25 +383,30 @@ export const useCompetitions = () => {
 
   // Update an existing competition
   const updateCompetition = async (
-    competitionId: number, 
+    competitionId: number,
     competitionData: {
       title: string;
       description: string;
       start_date: string;
       end_date: string;
+      participants?: number[]; // Add participants as optional field
     }
   ): Promise<Competition | null> => {
     try {
       const token = await AsyncStorage.getItem('authToken');
-      
       if (!token) {
         Alert.alert('Error', 'You need to be logged in to update competitions');
         return null;
       }
-      
+      // Log the payload for debugging
+      console.log('DEBUG updateCompetition id:', competitionId, 'data:', competitionData);
+      const payload = { ...competitionData };
+      if (competitionData.participants) {
+        payload.participants = competitionData.participants;
+      }
       const response = await axios.put(
-        `${API_URL}/competitions/${competitionId}/update/`, 
-        competitionData,
+        `${API_URL}/competitions/${competitionId}/update/`,
+        payload,
         {
           headers: {
             'Authorization': `Token ${token}`,
@@ -361,31 +414,37 @@ export const useCompetitions = () => {
           }
         }
       );
-      
+      console.log("Update competition response:", response.data);
       if (response.status === 200) {
-        // Update the competition in the local state if it exists
-        setCompetitions(prevCompetitions => 
-          prevCompetitions.map(comp => 
-            comp.id === competitionId ? {...comp, ...competitionData} : comp
+        setCompetitions(prevCompetitions =>
+          prevCompetitions.map(comp =>
+            comp.id === competitionId
+              ? {
+                  ...comp,
+                  title: competitionData.title,
+                  description: competitionData.description,
+                  start_date: competitionData.start_date,
+                  end_date: competitionData.end_date
+                  // Do NOT update participants here, as backend returns full object
+                }
+              : comp
           )
         );
-        
         return response.data;
       }
-      
       return null;
     } catch (err) {
       console.error('Error updating competition:', err);
-      
       if (axios.isAxiosError(err) && err.response) {
-        const errorMessage = err.response.data.message || 
-                            err.response.data.error || 
+        console.error('DEBUG updateCompetition error response:', err.response.data);
+        const errorMessage = err.response.data.message ||
+                            err.response.data.error ||
+                            JSON.stringify(err.response.data) ||
                             'Failed to update competition';
         Alert.alert('Error', errorMessage);
       } else {
         Alert.alert('Error', 'Failed to update competition');
       }
-      
       return null;
     }
   };

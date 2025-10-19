@@ -145,6 +145,13 @@ const _Layout = () => {
                 }}
             />
             <Tabs.Screen
+                name="focusmodecontrol"
+                options={{
+                    href: null,
+                    headerShown: false,
+                }}
+            />
+            <Tabs.Screen
                 name="competitiondetail"
                 options={{
                     href: null,

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Image, Modal, 
   SafeAreaView, KeyboardAvoidingView, Platform, Alert, ScrollView, TextInput} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -45,32 +46,38 @@ export default function CompetitionDetailsScreen() {
   
   const fetchCompetitionDetails = async () => {
     try {
-        setIsLoading(true);
-        setError(null);
-        
-        const data = await getCompetitionDetails(competitionId);
-        
-        if (data) {
+      setIsLoading(true);
+      setError(null);
+
+      const data = await getCompetitionDetails(competitionId);
+
+      if (data) {
         setCompetition(data.competition);
         setParticipants(data.participants || []);
+        console.log('Fetched participants:', data.participants);
+        // Debug userId and creator.id
+        const userId = await AsyncStorage.getItem('userId');
+        const creatorId = data.competition?.creator?.id;
+        console.log('DEBUG userId from AsyncStorage:', userId, 'type:', typeof userId);
+        console.log('DEBUG creatorId from competition:', creatorId, 'type:', typeof creatorId);
         setIsUserCreator(data.isCreator);
-        
+
         if (data.competition) {
-            setFormData({
+          setFormData({
             title: data.competition.title,
             description: data.competition.description || '',
             start_date: new Date(data.competition.start_date),
             end_date: new Date(data.competition.end_date)
-            });
+          });
         }
-        } else {
+      } else {
         setError('Could not load competition details');
-        }
+      }
     } catch (err) {
-        console.error('Error in fetchCompetitionDetails:', err);
-        setError('Failed to load competition details');
+      console.error('Error in fetchCompetitionDetails:', err);
+      setError('Failed to load competition details');
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
   
@@ -164,9 +171,9 @@ export default function CompetitionDetailsScreen() {
   const renderParticipantItem = ({ item, index }: { item: CompetitionParticipant, index: number }) => (
   <View className="bg-gray-800 rounded-lg p-4 mb-3 flex-row items-center">
     <Text className="text-white font-bold w-8 text-center">{index + 1}</Text>
-    
+
     <View className="flex-row items-center flex-1">
-      {item.user.avatar ? (
+      {item.user && item.user.avatar ? (
         <Image 
           source={{ uri: item.user.avatar }} 
           className="w-10 h-10 rounded-full mr-3" 
@@ -174,26 +181,39 @@ export default function CompetitionDetailsScreen() {
       ) : (
         <View className="w-10 h-10 rounded-full bg-purple-700 justify-center items-center mr-3">
           <Text className="text-white text-lg font-bold">
-            {item.user.username.charAt(0).toUpperCase()}
+            {item.user && item.user.username
+              ? item.user.username.charAt(0).toUpperCase()
+              : "?"}
           </Text>
         </View>
       )}
       <View>
-        <Text className="text-white">{item.user.username}</Text>
-        {competition && item.user.id === competition.creator.id && (
-          <View className="bg-verylightgreen rounded-full px-2 py-0.5 mt-1">
+        <Text className="text-white">{item.user && item.user.username ? item.user.username : "Unknown"}</Text>
+        {competition && item.user && item.user.id === competition.creator.id && (
+          <View className="bg-verylightgreen rounded-full px-2 py-1 mt-1 items-center">
             <Text className="text-black text-xs font-bold">Creator</Text>
           </View>
         )}
       </View>
     </View>
-    
-    <View className="flex-row items-center">
-      <Ionicons name="time-outline" size={16} color={colors.lightgrey} />
-      <Text className="text-lightgrey text-sm ml-1">
-        {item.average_daily_use ? `${Math.round(item.average_daily_use)}m` : 'N/A'}
-      </Text>
-    </View>
+
+    {competition && competition.status === 'active' && (
+      <View className="flex-row items-center">
+        <Ionicons name="time-outline" size={16} color={colors.lightgrey} />
+        <Text className="text-lightgrey text-sm ml-1">
+          {(() => {
+            const minutes = item.average_daily_use !== null && item.average_daily_use !== undefined
+              ? Math.round(item.average_daily_use)
+              : null;
+            if (minutes === null) return 'N/A';
+            if (minutes < 60) return `${minutes}m`;
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return mins === 0 ? `${hours}h` : `${hours}h ${mins}m`;
+          })()}
+        </Text>
+      </View>
+    )}
   </View>
 );
 
@@ -229,7 +249,7 @@ export default function CompetitionDetailsScreen() {
     <SafeAreaView className="flex-1 bg-black pt-12">
       {/* Header */}
       <View className="flex-row justify-between items-center px-4 mb-4">
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.replace('/(tabs)/competitions')}>
           <Ionicons name="arrow-back" size={24} color={colors.verylightgreen} />
         </TouchableOpacity>
         <Text className="text-verylightgreen text-xl font-bold">Competition Details</Text>
@@ -246,13 +266,19 @@ export default function CompetitionDetailsScreen() {
       <View className="bg-gray-800 rounded-lg p-4 mx-4 mb-4">
         <View className="flex-row justify-between items-center mb-2">
           <Text className="text-verylightgreen font-bold text-xl">{competition.title}</Text>
-          {competition.is_active ? (
+          {competition.status === 'active' && (
             <View className="bg-green-500 px-2 py-1 rounded">
               <Text className="text-black text-xs font-bold">ACTIVE</Text>
             </View>
-          ) : (
+          )}
+          {competition.status === 'upcoming' && (
+            <View className="bg-yellow-400 px-2 py-1 rounded">
+              <Text className="text-black text-xs font-bold">UPCOMING</Text>
+            </View>
+          )}
+          {competition.status === 'completed' && (
             <View className="bg-gray-600 px-2 py-1 rounded">
-              <Text className="text-white text-xs">ENDED</Text>
+              <Text className="text-white text-xs font-bold">COMPLETED</Text>
             </View>
           )}
         </View>
@@ -272,18 +298,20 @@ export default function CompetitionDetailsScreen() {
         
         <View className="flex-row items-center">
           <Ionicons name="people-outline" size={16} color={colors.lightgrey} />
-          <Text className="text-lightgrey text-sm ml-1">{competition.participants_count} participants</Text>
+          <Text className="text-lightgrey text-sm ml-1">{competition.participant_count} participants</Text>
         </View>
         
         <View className="flex-row items-center mt-3">
-          <Text className="text-gray-500 text-xs">Created by </Text>
+          <Text className="text-lightgrey text-xs">Created by </Text>
           <Text className="text-verylightgreen text-xs">@{competition.creator.username}</Text>
         </View>
       </View>
       
-      {/* Participants Section */}
+      {/* Participants/Leaderboard Section */}
       <View className="flex-row justify-between items-center px-4 mb-2">
-        <Text className="text-white font-bold text-lg">Leaderboard</Text>
+        <Text className="text-white font-bold text-lg">
+          {competition.status === 'active' ? 'Leaderboard' : 'Participants'}
+        </Text>
         {isUserCreator && (
           <TouchableOpacity onPress={() => setInviteFriendsModalVisible(true)}>
             <Text className="text-verylightgreen">Invite Friends</Text>
@@ -304,18 +332,6 @@ export default function CompetitionDetailsScreen() {
           </View>
         }
       />
-      
-      {/* Leave Competition Button */}
-      {!isUserCreator && (
-        <View className="px-4 py-4">
-          <TouchableOpacity 
-            className="bg-red-500 py-3 rounded-md items-center"
-            onPress={handleLeaveCompetition}
-          >
-            <Text className="text-white font-bold">Leave Competition</Text>
-          </TouchableOpacity>
-        </View>
-      )}
       
       {/* Edit Competition Modal */}
       <Modal
@@ -353,6 +369,7 @@ export default function CompetitionDetailsScreen() {
                 inviteParticipant={(username) => inviteToCompetition(competitionId, username)}
                 removeParticipant={(participantId) => removeParticipant(competitionId, participantId)}
                 isCreator={isUserCreator}
+                competitionStatus={competition?.status}
               />
             </SafeAreaView>
           </View>

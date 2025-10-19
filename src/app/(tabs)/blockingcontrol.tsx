@@ -29,8 +29,8 @@ export default function BlockingControlScreen() {
         getFocusMode();
     }, []);
       
-    const toggleFocusMode = () => {
-        setFocusMode(!isFocusModeActive);
+    const goToFocusModeControl = () => {
+        router.push('/focusmodecontrol');
     };
     
     const handleScrollBlocked = (enabled: boolean) => {
@@ -54,16 +54,16 @@ export default function BlockingControlScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-                style={{ width: '80%', paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, marginBottom: 24, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', backgroundColor: isFocusModeActive ? colors.verylightgreen : colors.gray }}
-                onPress={toggleFocusMode}
+                style={{ width: '80%', paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, marginBottom: 24, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', backgroundColor: colors.gray }}
+                onPress={goToFocusModeControl}
             >
                 <Ionicons
                     name="moon"
                     size={18}
-                    color={isFocusModeActive ? colors.black : colors.lightgrey}
+                    color={colors.lightgrey}
                     style={{ marginRight: 8 }}
                 />
-                <Text style={{ fontWeight: 'bold', color: isFocusModeActive ? colors.black : colors.lightgrey }}>
+                <Text style={{ fontWeight: 'bold', color: colors.lightgrey }}>
                     Focus Mode
                 </Text>
             </TouchableOpacity>

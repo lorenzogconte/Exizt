@@ -4,14 +4,13 @@ export interface Competition {
   id: number;
   title: string;
   description?: string;
-  is_active: boolean;
   start_date: string;
   end_date: string;
-  participants_count: number;
+  participant_count: number;
   creator: UserModel;
   created_at?: string;
   participants?: UserModel[];
-  status?: 'upcoming' | 'active' | 'completed' | 'cancelled';
+  status: 'upcoming' | 'active' | 'completed' | 'cancelled';
   winner?: UserModel;
 }
 

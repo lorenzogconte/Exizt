@@ -11,8 +11,10 @@ import com.facebook.react.bridge.*
 import kotlinx.coroutines.*
 import java.util.*
 import android.util.Log
+import com.lorenzoconte.Exizt.appblock.AppBlocker
 
 class ScreenTimeModule(private val reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
+
     companion object {
         /**
          * Returns total screen time in milliseconds and app usage map for a given day (or today if nulls).
@@ -89,8 +91,8 @@ class ScreenTimeModule(private val reactContext: ReactApplicationContext) : Reac
                     Log.d("ScreenTimeModule", "Fetched label for ${stat.packageName}: $appLabel")
                     appMap.putString("appLabel", appLabel)
                     val drawable = packageManager.getApplicationIcon(appInfo)
-                    val bitmap = com.lorenzoconte.Exizt.appblock.AppBlocker.drawableToBitmap(drawable)
-                    val iconBase64 = com.lorenzoconte.Exizt.appblock.AppBlocker.bitmapToBase64(bitmap)
+                    val bitmap = AppBlocker.drawableToBitmap(drawable)
+                    val iconBase64 = AppBlocker.bitmapToBase64(bitmap)
                     appMap.putString("iconBase64", iconBase64)
                 } catch (e: Exception) {
                     appMap.putString("iconBase64", "")
@@ -131,27 +133,47 @@ class ScreenTimeModule(private val reactContext: ReactApplicationContext) : Reac
         }
     }
 
+    /**
+     * Retrieves the screen time for the week ending on the given date (year, month, day).
+     * Calculates from the previous Monday (inclusive) to the given day (inclusive).
+     * @param year The year (e.g., 2025)
+     * @param month The month (1-based, January=1)
+     * @param day The day of month
+     * @param promise React Native promise
+     */
     @ReactMethod
-    fun getWeeklyScreenTime(promise: Promise) {
+    fun getWeeklyScreenTime(year: Int, month: Int, day: Int, promise: Promise) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Calculate start of week (Monday of current week)
-                val startOfWeek = Calendar.getInstance().apply {
+                Log.d("ScreenTimeModule", "getWeeklyScreenTime called with: year=$year, month=$month, day=$day")
+                // Calculate end of day (given date)
+                val endCalendar = Calendar.getInstance().apply {
                     timeZone = TimeZone.getDefault()
-                    set(Calendar.HOUR_OF_DAY, 0)
-                    set(Calendar.MINUTE, 0)
-                    set(Calendar.SECOND, 0)
-                    set(Calendar.MILLISECOND, 0)
-                    set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-                }.timeInMillis
+                    set(Calendar.YEAR, year)
+                    set(Calendar.MONTH, month - 1)
+                    set(Calendar.DAY_OF_MONTH, day)
+                    set(Calendar.HOUR_OF_DAY, 23)
+                    set(Calendar.MINUTE, 59)
+                    set(Calendar.SECOND, 59)
+                    set(Calendar.MILLISECOND, 999)
+                }
+                val endOfPeriod = endCalendar.timeInMillis
+                Log.d("ScreenTimeModule", "Computed endOfPeriod: $endOfPeriod -> ${Date(endOfPeriod)}")
 
-                val currentTime = System.currentTimeMillis()
-                Log.d("ScreenTimeModule", "Current time: $currentTime")
-                Log.d("ScreenTimeModule", "Start of week: $startOfWeek")
+                // Calculate previous Monday (start of week)
+                val startCalendar = endCalendar.clone() as Calendar
+                val dayOfWeek = startCalendar.get(Calendar.DAY_OF_WEEK)
+                val daysToMonday = if (dayOfWeek == Calendar.SUNDAY) 6 else dayOfWeek - Calendar.MONDAY
+                startCalendar.add(Calendar.DAY_OF_MONTH, -daysToMonday)
+                startCalendar.set(Calendar.HOUR_OF_DAY, 0)
+                startCalendar.set(Calendar.MINUTE, 0)
+                startCalendar.set(Calendar.SECOND, 0)
+                startCalendar.set(Calendar.MILLISECOND, 0)
+                val startOfPeriod = startCalendar.timeInMillis
+                Log.d("ScreenTimeModule", "Computed startOfPeriod: $startOfPeriod -> ${Date(startOfPeriod)}")
+
                 val usageStatsManager = reactContext.getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
                 val packageManager = reactContext.packageManager
-
-                // Get launcher apps to exclude them
                 val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
                 val launcherApps = packageManager.queryIntentActivities(launcherIntent, 0)
                     .map { it.activityInfo.packageName }
@@ -159,27 +181,44 @@ class ScreenTimeModule(private val reactContext: ReactApplicationContext) : Reac
 
                 val stats = usageStatsManager.queryUsageStats(
                     INTERVAL_WEEKLY,
-                    startOfWeek,
-                    currentTime
+                    startOfPeriod,
+                    endOfPeriod
                 )
+
+                Log.d("ScreenTimeModule", "queryUsageStats returned ${stats.size} entries")
 
                 val totalTimeInMillis = stats
                     .filter { stat ->
-                        // Exclude launcher apps and system UI
                         !launcherApps.contains(stat.packageName) &&
                         !stat.packageName.startsWith("com.android.systemui")
                     }
                     .sumOf { it.totalTimeInForeground }
 
+                Log.d("ScreenTimeModule", "Calculated totalTimeInMillis: $totalTimeInMillis ms")
+
                 // Create app usage data map
                 val appUsageMap = WritableNativeMap()
                 stats.filter { !launcherApps.contains(it.packageName) }
                     .forEach { stat ->
-                    val appMap = WritableNativeMap()
+                        val appMap = WritableNativeMap()
                         appMap.putDouble("totalTimeInForeground", stat.totalTimeInForeground.toDouble())
                         appMap.putDouble("lastTimeUsed", stat.lastTimeUsed.toDouble())
+                        // Get app label and icon as Base64 using AppBlocker utility functions
+                        try {
+                            val appInfo = packageManager.getApplicationInfo(stat.packageName, 0)
+                            val appLabel = packageManager.getApplicationLabel(appInfo).toString()
+                            Log.d("ScreenTimeModule", "Fetched label for ${stat.packageName}: $appLabel")
+                            appMap.putString("appLabel", appLabel)
+                            val drawable = packageManager.getApplicationIcon(appInfo)
+                            val bitmap = AppBlocker.drawableToBitmap(drawable)
+                            val iconBase64 = AppBlocker.bitmapToBase64(bitmap)
+                            appMap.putString("iconBase64", iconBase64)
+                        } catch (e: Exception) {
+                            appMap.putString("iconBase64", "")
+                            appMap.putString("appLabel", stat.packageName)
+                        }
                         appUsageMap.putMap(stat.packageName, appMap)
-                }
+                    }
 
                 // Create result object
                 val result = WritableNativeMap()
@@ -190,6 +229,7 @@ class ScreenTimeModule(private val reactContext: ReactApplicationContext) : Reac
                     promise.resolve(result)
                 }
             } catch (e: Exception) {
+                Log.e("ScreenTimeModule", "Error in getWeeklyScreenTime: ${e.message}", e)
                 withContext(Dispatchers.Main) {
                     promise.reject("SCREEN_TIME_ERROR", e.message, e)
                 }
@@ -197,6 +237,11 @@ class ScreenTimeModule(private val reactContext: ReactApplicationContext) : Reac
         }
     }
 
+    /**
+     * Formats time in milliseconds to a human-readable string.
+     * @param timeInMillis Time in milliseconds
+     * @param promise React Native promise
+     */
     @ReactMethod
     fun formatTimeSpent(timeInMillis: Double, promise: Promise) {
         val hours = (timeInMillis / (1000 * 60 * 60)).toInt()
@@ -209,5 +254,27 @@ class ScreenTimeModule(private val reactContext: ReactApplicationContext) : Reac
         }
         
         promise.resolve(formattedTime)
+    }
+
+    /**
+     * Saves or clears the auth token in SharedPreferences for native worker access.
+     */
+    @ReactMethod
+    fun saveAuthToken(token: String?, promise: Promise) {
+        try {
+            val prefs = reactContext.getSharedPreferences("ExiztPrefs", Context.MODE_PRIVATE)
+            val editor = prefs.edit()
+            if (token.isNullOrEmpty()) {
+                editor.remove("authToken")
+                android.util.Log.i("ScreenTimeModule", "Cleared auth token in SharedPreferences")
+            } else {
+                editor.putString("authToken", token)
+                android.util.Log.i("ScreenTimeModule", "Saved auth token in SharedPreferences")
+            }
+            editor.apply()
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("SAVE_TOKEN_ERROR", e.message)
+        }
     }
 }

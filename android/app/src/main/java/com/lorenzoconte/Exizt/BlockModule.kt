@@ -1,4 +1,3 @@
-
 package com.lorenzoconte.Exizt
 
 import com.facebook.react.bridge.Promise
@@ -58,6 +57,20 @@ class BlockModule(private val reactContext: ReactApplicationContext)
     fun setFocusMode(active: Boolean, promise: Promise) {
         Log.d("BlockModule", "setFocusMode called with active = $active")
         appBlocker.setFocusMode(reactContext, active, promise)
+    }
+
+    @ReactMethod
+    fun setFocusModeSelectedApps(apps: ReadableArray, promise: Promise) {
+        val appsList = mutableListOf<String>()
+        for (i in 0 until apps.size()) {
+            appsList.add(apps.getString(i))
+        }
+        appBlocker.setFocusModeSelectedApps(reactContext, appsList, promise)
+    }
+
+    @ReactMethod
+    fun getFocusModeSelectedApps(promise: Promise) {
+        appBlocker.getFocusModeSelectedApps(reactContext, promise)
     }
 
     @ReactMethod

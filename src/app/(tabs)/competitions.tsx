@@ -164,13 +164,20 @@ const finishInvitations = () => {
     >
       <View className="flex-row justify-between items-center mb-2">
         <Text className="text-verylightgreen font-bold text-xl">{item.title}</Text>
-        {item.is_active ? (
-          <View className="bg-green-500 px-2 py-1 rounded">
+        
+        {item.status === 'active' && (
+          <View className="bg-lightgreen px-2 py-1 rounded">
             <Text className="text-black text-xs font-bold">ACTIVE</Text>
           </View>
-        ) : (
+        )}
+        {item.status === 'upcoming' && (
+          <View className="bg-yellow-400 px-2 py-1 rounded">
+            <Text className="text-black text-xs font-bold">UPCOMING</Text>
+          </View>
+        )}
+        {item.status === 'completed' && (
           <View className="bg-gray-600 px-2 py-1 rounded">
-            <Text className="text-white text-xs">ENDED</Text>
+            <Text className="text-white text-xs font-bold">COMPLETED</Text>
           </View>
         )}
       </View>
@@ -189,7 +196,7 @@ const finishInvitations = () => {
         
         <View className="flex-row items-center">
           <Ionicons name="people-outline" size={16} color={colors.lightgrey} />
-          <Text className="text-lightgrey text-sm ml-1">{item.participants_count}</Text>
+          <Text className="text-lightgrey text-sm ml-1">{item.participant_count}</Text>
         </View>
       </View>
       

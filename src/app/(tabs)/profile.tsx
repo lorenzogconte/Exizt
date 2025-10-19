@@ -302,17 +302,19 @@ export default function ProfileScreen() {
                             
                         </View>
                     )}
-                    
+                </View>
+                <View className="px-5 py-60 relative">
                     {/* Logout button - only show when not editing */}
                     {!isEditing && (
                         <TouchableOpacity
-                            className="bg-red-500 px-8 py-3 rounded-full mt-8 bottom-1" 
+                            className="bg-red-500 px-8 py-3 rounded-full mt-8"
                             onPress={handleLogout}
                         >
                             <Text className="text-white font-bold text-center">Logout</Text>
                         </TouchableOpacity>
                     )}
                 </View>
+                
 
                 {/* Friends Modal */}
                 <Modal

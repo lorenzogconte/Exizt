@@ -18,6 +18,8 @@ export default function Index() {
     setSelectedPeriod,
     selectedDay,
     setSelectedDay,
+    selectedWeekStart,
+    setSelectedWeekStart,
     fetchScreenTime,
     calculateTotalScreenTime,
   } = useUsageStats();
@@ -29,14 +31,7 @@ export default function Index() {
   } = useAppBlock();
   
   const [fontsLoaded, setFontsLoaded] = useState(false);
-  const [selectedWeekStart, setSelectedWeekStart] = useState(() => {
-    const now = new Date();
-    const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1; // Monday=0, Sunday=6
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - dayOfWeek);
-    monday.setHours(0,0,0,0);
-    return monday;
-  });
+  // ...existing code...
   // Helper to format date as "Monday, 27 October"
   const formatDay = (date: Date) => {
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -60,16 +55,20 @@ export default function Index() {
     }
   }, [selectedDay, selectedPeriod]);
 
+  useEffect(() => {
+    if (selectedPeriod === 'week') {
+      fetchScreenTime();
+    }
+  }, [selectedWeekStart, selectedPeriod]);
+
   const changeWeek = (direction: number) => {
     setSelectedWeekStart(prev => {
       const newDate = new Date(prev);
       newDate.setDate(newDate.getDate() + direction * 7);
       return newDate;
     });
-    // TODO: Trigger data refresh for the new week if needed
   };
 
-  // Format week range: "Oct 21 - Oct 27"
   const formatWeek = (start: Date) => {
     const end = new Date(start);
     end.setDate(start.getDate() + 6);
@@ -135,6 +134,29 @@ export default function Index() {
       </TouchableOpacity>
     </View>
   );
+
+  // Helper to calculate weekly average screen time
+  const getWeeklyAverageScreenTime = () => {
+    // Find this week's Monday
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const dayOfWeek = today.getDay() === 0 ? 6 : today.getDay() - 1;
+    const thisMonday = new Date(today);
+    thisMonday.setDate(today.getDate() - dayOfWeek);
+    thisMonday.setHours(0,0,0,0);
+    const selectedMonday = new Date(selectedWeekStart);
+    selectedMonday.setHours(0,0,0,0);
+    let daysInWeek;
+    if (selectedMonday.getTime() === thisMonday.getTime()) {
+      // Current week: from Monday to today
+      daysInWeek = dayOfWeek + 1;
+    } else {
+      // Past week: always 7 days
+      daysInWeek = 7;
+    }
+    const total = calculateTotalScreenTime();
+    return daysInWeek > 0 ? total / daysInWeek : 0;
+  };
 
   return (
   <ScrollView className="flex-1 bg-black px-4 py-6" contentContainerStyle={{ flexGrow: 1, paddingBottom: 96 }}>
@@ -237,7 +259,7 @@ export default function Index() {
         </View>
       ) : (
         <>
-          {/* Pie chart for today's screen time using react-native-pie-chart with total in center */}
+          {/* Pie chart for today's/weekly screen time using react-native-pie-chart with average in center for week */}
           <View style={{ alignItems: 'center', marginBottom: 24, justifyContent: 'center', overflow: 'visible' }}>
             <View style={{ position: 'relative', width: 222, height: 222, alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
               {usageStats.length === 0 ? (
@@ -253,11 +275,16 @@ export default function Index() {
                 const otherTime = usageStats.slice(3).reduce((sum, app) => sum + app.totalTimeInForeground, 0);
                 const colorsArr = ['#308695', '#D45769', '#E69D45', '#ACADA8'];
                 const chartData = [
-                  ...topApps.map((app, idx) => ({
-                    value: app.totalTimeInForeground,
-                    color: colorsArr[idx],
-                    label: { text: app.appLabel ? (app.appLabel.length > 12 ? app.appLabel.slice(0, 12) + '…' : app.appLabel) : 'Unknown', fontWeight: 'bold', fill: '#fff', fontSize: 12 },
-                  })),
+                  ...topApps.map((app, idx) => {
+                    let labelText = app.appLabel || app.appName || app.packageName;
+                    if (labelText.length > 12) labelText = labelText.slice(0, 12) + '…';
+                    return {
+                      value: app.totalTimeInForeground,
+                      color: colorsArr[idx],
+                      label: { text: labelText, fontWeight: 'bold', fill: '#fff', fontSize: 12 },
+                      iconBase64: app.iconBase64 || '',
+                    };
+                  }),
                   {
                     value: otherTime,
                     color: colorsArr[3],
@@ -273,11 +300,20 @@ export default function Index() {
                   />
                 );
               })()}
-              {/* Overlay total screen time in center */}
+              {/* Overlay average screen time in center for week, total for day */}
               <View style={{ position: 'absolute', top: 0, left: 0, width: 222, height: 222, alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 28, fontFamily: 'montserrat_extrabold' }}>
-                  {usageStats.length === 0 ? '0m' : formatUsageTime(calculateTotalScreenTime())}
+                  {usageStats.length === 0
+                    ? '0m'
+                    : selectedPeriod === 'week'
+                      ? formatUsageTime(getWeeklyAverageScreenTime())
+                      : formatUsageTime(calculateTotalScreenTime())}
                 </Text>
+                {selectedPeriod === 'week' && usageStats.length > 0 && (
+                  <Text style={{ color: '#fff', fontSize: 14, fontFamily: 'montserrat_medium', marginTop: 4 }}>
+                    avg/day
+                  </Text>
+                )}
               </View>
             </View>
           </View>
@@ -286,7 +322,7 @@ export default function Index() {
             <View key={app.packageName} className="bg-gray mb-3 rounded-lg p-4">
               <View className="flex-row justify-between items-center">
                 <View className="flex-row items-center">
-                  {/* App icon */}
+                  {/* App icon (always show for both day and week) */}
                   {app.iconBase64 ? (
                     <Image
                       source={{ uri: `data:image/png;base64,${app.iconBase64}` }}
@@ -296,7 +332,7 @@ export default function Index() {
                   ) : null}
                   <View>
                     <Text className="text-lightgrey font-montserrat_light">
-                      {app.appLabel || app.appName}
+                      {app.appLabel || app.appName || app.packageName}
                     </Text>
                   </View>
                 </View>

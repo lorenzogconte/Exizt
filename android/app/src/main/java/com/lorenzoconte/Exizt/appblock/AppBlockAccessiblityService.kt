@@ -58,13 +58,25 @@ class AppBlockAccessibilityService : AccessibilityService() {
         }
 
         Log.d(TAG, "Checking if app should be blocked: $packageName")
-        // Check if it's in the blocked list and if blocking is active
         val prefs = getSharedPreferences("AppBlockPrefs", Context.MODE_PRIVATE)
         val focusModeActive = prefs.getBoolean("focusModeActive", false)
-        Log.d("focusModeActive", focusModeActive.toString())
+
+        // Check Focus Mode selected apps
+        val focusModeAppsJson = prefs.getString("focusModeSelectedApps", "[]")
+        Log.d(TAG, "Focus Mode selected apps JSON: $focusModeAppsJson")
+        val focusModeAppsArr = JSONArray(focusModeAppsJson)
+        val focusModeApps = mutableListOf<String>()
+        for (i in 0 until focusModeAppsArr.length()) {
+            focusModeApps.add(focusModeAppsArr.getString(i))
+        }
+        if (focusModeActive && focusModeApps.contains(packageName)) {
+            Log.d(TAG, "Focus Mode is active and $packageName is in selected apps. Blocking immediately.")
+            return true
+        }
+
+        // Continue with group time limit logic
         val groupsJson = prefs.getString("appGroups", "[]")
         val groupsArr = JSONArray(groupsJson)
-        var shouldBlockForGroup = false
         for (i in 0 until groupsArr.length()) {
             val groupObj = groupsArr.getJSONObject(i)
             Log.d(TAG, "Checking group: ${groupObj.getString("name")}")

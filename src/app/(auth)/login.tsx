@@ -1,10 +1,12 @@
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Link } from 'expo-router';
 import React from 'react';
 import colors from '../../../assets/colors.js';
 import { useAuth } from '../../hooks/useAuth';
 
 const LogIn = () => {
+    const [showPassword, setShowPassword] = React.useState(false);
     const { 
         username, 
         setUsername, 
@@ -30,17 +32,31 @@ const LogIn = () => {
                 className={`bg-black border w-full rounded-md p-3 mb-5 text-lightgrey ${loginError ? 'border-red-500' : 'border-lightgrey'}`}
                 autoCapitalize="none"
             />
-            <TextInput
-                placeholder="Password"
-                placeholderTextColor={colors.lightgrey}
-                value={password}
-                onChangeText={text => {
-                    setPassword(text);
-                    if (loginError) setLoginError('');
-                }}
-                secureTextEntry
-                className={`bg-black border w-full rounded-md p-3 mb-2 text-lightgrey ${loginError ? 'border-red-500' : 'border-lightgrey'}`}
-            />
+            <View style={{ width: '100%', marginBottom: 8, position: 'relative' }}>
+                <TextInput
+                    placeholder="Password"
+                    placeholderTextColor={colors.lightgrey}
+                    value={password}
+                    onChangeText={text => {
+                        setPassword(text);
+                        if (loginError) setLoginError('');
+                    }}
+                    secureTextEntry={!showPassword}
+                    className={`bg-black border w-full rounded-md p-3 pr-12 text-lightgrey ${loginError ? 'border-red-500' : 'border-lightgrey'}`}
+                    style={{ paddingRight: 44 }}
+                />
+                <TouchableOpacity
+                    onPress={() => setShowPassword((prev) => !prev)}
+                    style={{ position: 'absolute', right: 12, top: 0, height: '100%', justifyContent: 'center' }}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                    <Ionicons
+                        name={showPassword ? 'eye-off' : 'eye'}
+                        size={22}
+                        color={colors.lightgrey}
+                    />
+                </TouchableOpacity>
+            </View>
             {loginError ? (
                 <Text className="text-red-500 w-full text-center mb-6">Username or password is wrong</Text>
             ) : (

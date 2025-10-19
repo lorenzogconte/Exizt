@@ -5,6 +5,9 @@ import colors from '../../../assets/colors.js';
 import { useAuth } from '../../hooks/useAuth';
 
 const SignUp = () => {
+    // State for password confirmation
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [confirmPasswordError, setConfirmPasswordError] = useState('');
     // Get all auth-related functionality from useAuth hook
     const { 
         email, 
@@ -34,10 +37,18 @@ const SignUp = () => {
     
     const goToNextStep = () => {
         let isValid = false;
-        
         switch (currentStep) {
             case 1:
-                isValid = validateEmail() && validatePassword();
+                const emailValid = validateEmail();
+                const passwordValid = validatePassword();
+                // Confirm password validation
+                if (confirmPassword !== password) {
+                    setConfirmPasswordError('Passwords do not match');
+                    isValid = false;
+                } else {
+                    setConfirmPasswordError('');
+                    isValid = emailValid && passwordValid;
+                }
                 break;
             case 2:
                 isValid = validateUsername();
@@ -46,16 +57,15 @@ const SignUp = () => {
                 isValid = validateName();
                 break;
             case 4:
-            if (!termsAccepted) {
-                setTermsError('You must accept the Terms and Conditions to continue');
-                isValid = false;
-            } else {
-                setTermsError('');
-                isValid = true;
-            }
-            break;
+                if (!termsAccepted) {
+                    setTermsError('You must accept the Terms and Conditions to continue');
+                    isValid = false;
+                } else {
+                    setTermsError('');
+                    isValid = true;
+                }
+                break;
         }
-        
         if (isValid) {
             setCurrentStep(Math.min(currentStep + 1, totalSteps));
             console.log(`Moved to step ${currentStep + 1}`);
@@ -151,7 +161,6 @@ const SignUp = () => {
                     <>
                         <Text className="text-verylightgreen text-3xl font-bold mb-2">Create Account</Text>
                         <Text className="text-lightgrey mb-8 text-center">Enter your email and password to get started</Text>
-                        
                         <View className="w-full mb-4">
                             <TextInput
                                 placeholder="Email"
@@ -165,8 +174,7 @@ const SignUp = () => {
                             />
                             {errors.email ? <Text className="text-red-500 text-xs pl-1">{errors.email}</Text> : null}
                         </View>
-                        
-                        <View className="w-full mb-6">
+                        <View className="w-full mb-4">
                             <TextInput
                                 placeholder="Password (min. 8 characters)"
                                 placeholderTextColor={colors.lightgrey}
@@ -178,14 +186,33 @@ const SignUp = () => {
                             />
                             {errors.password ? <Text className="text-red-500 text-xs pl-1">{errors.password}</Text> : null}
                         </View>
-                        
+                        <View className="w-full mb-6">
+                            <TextInput
+                                placeholder="Confirm Password"
+                                placeholderTextColor={colors.lightgrey}
+                                value={confirmPassword}
+                                onChangeText={text => {
+                                    setConfirmPassword(text);
+                                    if (confirmPasswordError) setConfirmPasswordError('');
+                                }}
+                                onBlur={() => {
+                                    if (confirmPassword !== password) {
+                                        setConfirmPasswordError('Passwords do not match');
+                                    } else {
+                                        setConfirmPasswordError('');
+                                    }
+                                }}
+                                secureTextEntry
+                                className={`bg-black border ${confirmPasswordError ? 'border-red-500' : 'border-lightgrey'} w-full rounded-md p-3 mb-1 text-lightgrey`}
+                            />
+                            {confirmPasswordError ? <Text className="text-red-500 text-xs pl-1">{confirmPasswordError}</Text> : null}
+                        </View>
                         <TouchableOpacity 
                             onPress={goToNextStep}
                             className="w-full py-3 rounded-md bg-verylightgreen mb-6"
                         >
                             <Text className="text-black font-bold text-center text-lg">Continue</Text>
                         </TouchableOpacity>
-                        
                         <View className="flex-row items-center mt-4">
                             <Text className="text-lightgrey mr-2">Already have an account?</Text>
                             <Link href="/login" asChild>

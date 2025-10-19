@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import { NativeModules } from 'react-native';
 import { UserModel, saveProfile } from '../models/userModel';
 import { API_URL } from '@env';
 
@@ -74,6 +75,17 @@ export function useAuth() {
     return true;
   };
 
+  const persistNativeAuthToken = (token: string) => {
+    try {
+      if (NativeModules && NativeModules.ScreenTimeStats && NativeModules.ScreenTimeStats.saveAuthToken) {
+        NativeModules.ScreenTimeStats.saveAuthToken(token);
+        console.log('Native auth token persist requested');
+      }
+    } catch (e) {
+      console.log('persistNativeAuthToken error:', e);
+    }
+  };
+
   // Login logic
   const handleLogin = async () => {
     if (!username || !password) {
@@ -105,10 +117,12 @@ export function useAuth() {
       };
 
       if (token) {
-        await AsyncStorage.setItem('authToken', token);
-        await saveProfile(localProfile);
-        console.log("Token saved:", token);
-        router.replace('/(tabs)/profile');
+  await AsyncStorage.setItem('authToken', token);
+  await AsyncStorage.setItem('userId', localProfile.id.toString());
+  await saveProfile(localProfile);
+  persistNativeAuthToken(token);
+  console.log("Token and userId saved:", token, localProfile.id);
+  router.replace('/(tabs)/profile');
       } else {
         console.error("No token received in login response");
         setLoginError('Username or password is wrong');
@@ -209,6 +223,7 @@ export function useAuth() {
     try {
       console.log("Logging out user...");
       await AsyncStorage.multiRemove(['authToken', '@localProfile']);
+      persistNativeAuthToken('');
       console.log("Auth data cleared");
       resetForm();
       router.replace('/(auth)/login');

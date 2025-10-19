@@ -237,6 +237,42 @@ class AppBlocker {
         }
     }
 
+    fun setFocusModeSelectedApps(reactContext: ReactApplicationContext, apps: List<String>, promise: Promise) {
+        focusModeData.selectedApps = HashSet(apps)
+        Log.d(TAG, "FocusMode selected apps set to: ${focusModeData.selectedApps}")
+        try {
+            val prefs = reactContext.getSharedPreferences("AppBlockPrefs", Context.MODE_PRIVATE)
+            val editor = prefs.edit()
+            val appsJson = org.json.JSONArray(apps).toString()
+            editor.putString("focusModeSelectedApps", appsJson)
+            editor.apply()
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("ERROR", e.message)
+        }
+    }
+
+    fun getFocusModeSelectedApps(reactContext: ReactApplicationContext, promise: Promise) {
+        try {
+            val prefs = reactContext.getSharedPreferences("AppBlockPrefs", Context.MODE_PRIVATE)
+            val focusModeAppsJson = prefs.getString("focusModeSelectedApps", "[]")
+            Log.d(TAG, "Focus Mode selected apps JSON retrieved: $focusModeAppsJson")
+            // Update in-memory data structure
+            val appsList = mutableListOf<String>()
+            val jsonArray = org.json.JSONArray(focusModeAppsJson)
+            val resultArray = WritableNativeArray()
+            for (i in 0 until jsonArray.length()) {
+                val pkg = jsonArray.getString(i)
+                appsList.add(pkg)
+                resultArray.pushString(pkg)
+            }
+            focusModeData.selectedApps = HashSet(appsList)
+            promise.resolve(resultArray)
+        } catch (e: Exception) {
+            promise.reject("ERROR", e.message)
+        }
+    }
+
     private fun isAccessibilityServiceEnabled(reactContext: ReactApplicationContext): Boolean {
         val service = "${reactContext.packageName}/${AppBlockAccessibilityService::class.java.canonicalName}"
         val enabledServices = Settings.Secure.getString(
